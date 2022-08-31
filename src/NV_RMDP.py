@@ -29,7 +29,6 @@ class NV_RMDP:
         dist,
         t_max,
         eps,
-        policy,
         P_hat,
         distance,
         kappa,
@@ -39,6 +38,8 @@ class NV_RMDP:
         alpha,
         gap,
         N,
+        timeout,
+        solver_cores
     ):
 
         self.para = para
@@ -66,6 +67,8 @@ class NV_RMDP:
         self.alpha = alpha
         self.gap = gap
         self.N = N
+        self.timeout = timeout
+        self.solver_cores = solver_cores
 
     def compute_rewards(self):
         r = np.zeros((self.S, self.A, self.S))
@@ -101,6 +104,8 @@ class NV_RMDP:
                 self.tol,
                 self.kappa,
                 self.P_hat,
+                self.timeout,
+                self.solver_cores
             )
         else:
             self.MDP = NP_RMDP(
@@ -115,5 +120,7 @@ class NV_RMDP:
                 self.t_max,
                 self.eps,
                 self.tol,
+                self.timeout,
+                self.solver_cores
             )
         return self.MDP

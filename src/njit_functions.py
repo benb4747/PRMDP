@@ -1,5 +1,15 @@
 from numba import njit
 from math import log, exp
+import sys, os
+
+# Disable
+def block_print():
+    sys.stdout = open(os.devnull, "w")
+
+
+# Restore
+def enable_print():
+    sys.stdout = sys.__stdout__
 
 @njit
 def binom_coef(n, k):

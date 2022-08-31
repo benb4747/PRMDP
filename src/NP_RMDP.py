@@ -12,6 +12,8 @@ from scipy.misc import derivative
 import matplotlib.pyplot as plt
 from numba import njit
 
+from src.njit_functions import *
+
 class NP_RMDP:
     def __init__(
         self,
@@ -26,6 +28,8 @@ class NP_RMDP:
         t_max,
         eps,
         tol,
+        timeout,
+        solver_cores
     ):
         self.states = states
         self.actions = actions
@@ -41,6 +45,8 @@ class NP_RMDP:
 
         self.S = len(states)
         self.A = len(actions)
+        self.timeout = timeout
+        self.solver_cores = solver_cores
 
     def projection_obj_true(self, alpha, s, b, a, beta, zeta):
         return (
@@ -146,7 +152,8 @@ class NP_RMDP:
             dx=1e-6,
         )
 
-    def solve_projection(self, s, b, a, beta, delta, method="sp"):
+    def solve_projection(self, s, b, a, beta, delta, tt, method="sp"):
+        start = time.perf_counter()
         if sum(self.P_hat[s, a] * b) <= beta:
             # print("trivial solution is optimal.")
             dist = sum(
@@ -167,13 +174,15 @@ class NP_RMDP:
 
             condition = True
             while condition:
+                if tt + (time.perf_counter() - start) > self.timeout:
+                    return ["T.O."]
                 x = (l + u) / 2
                 try:
                     self.projection_deriv(x, s, b, a, beta)
                 except ValueError:
                     u = x
                     continue
-
+                
                 if self.projection_deriv(x, s, b, a, beta) > 0:
                     l = x
                 else:
@@ -192,11 +201,14 @@ class NP_RMDP:
 
         elif self.distance == "mchisq":
             if method == "proj_qp":
-                m = gp.Model()
-                m.Params.LogToConsole = 0
-                m.Params.OutputFlag = 0
-                m.Params.Threads = 1
-                m.Params.Presolve = 0
+                block_print()
+                env = gp.Env()
+                env.setParam("OutputFlag", 0)
+                env.setParam("Presolve", 1)
+                env.setParam("LogToConsole", 0)
+                env.setParam("Threads", self.solver_cores)
+                m = gp.Model(env=env)
+                enable_print()
 
                 zeta = m.addVar(name="eta", lb=-GRB.INFINITY)
                 alpha = m.addVar(name="alpha")
@@ -211,22 +223,27 @@ class NP_RMDP:
                     + zeta
                     - gp.quicksum(self.P_hat[s, a, s_] * x[s_] for s_ in keys)
                 )
-
+                if tt + (time.perf_counter() - start) > self.timeout:
+                    return ["T.O."]
+                m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() 
+                                                    - start)
                 m.setObjective(Obj, GRB.MAXIMIZE)
 
                 m.optimize()
+                if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:  
+                    alpha_star = alpha.x
+                    zeta_star = zeta.x
 
-                alpha_star = alpha.x
-                zeta_star = zeta.x
+                    del m
 
-                del m
+                    return [
+                        self.projection_obj_true(alpha_star, s, b, a, beta, zeta_star),
+                        self.projection_obj_true(alpha_star, s, b, a, beta, zeta_star),
+                    ]
+                else:
+                    return ["T.O."]
 
-                return [
-                    self.projection_obj_true(alpha_star, s, b, a, beta, zeta_star),
-                    self.projection_obj_true(alpha_star, s, b, a, beta, zeta_star),
-                ]
             elif method == "proj_sort":
-
                 states_nz = [s_ for s_ in range(self.S) if self.P_hat[s, a, s_] != 0]
                 states_nz = list(
                     reversed(sorted(range(len(states_nz)), key=lambda k: b[k]))
@@ -243,6 +260,8 @@ class NP_RMDP:
                     else:
                         best_alpha = []
                     for case in range(3):
+                        if tt +  time.perf_counter() - start > self.timeout:
+                            return ["T.O."]
                         if ((case == 0) and (S_hat == S_ - 1)) or (
                             (case == 1) and S_hat == 0
                         ):
@@ -284,9 +303,9 @@ class NP_RMDP:
 
                 return [max(best_objs), max(best_objs)]
 
-    def Bellman_update(self, v, s, t, method):
+    def Bellman_update(self, v, s, t, method, tt):
         # print("---- Bellman update step t = %s for s = %s----\n" %(t,s))
-
+        start = time.perf_counter()
         if "proj" in method:
             R_bar = np.max(self.rewards) / (1 - self.discount)
             delta = self.tol * self.kappa / (2 * self.A * R_bar + self.A * self.tol)
@@ -305,13 +324,15 @@ class NP_RMDP:
             alpha = np.zeros(self.A)
             condition = True
             while condition:
+                if tt +  time.perf_counter() - start > self.timeout:
+                    return ["T.O."]
                 # print("l = ", l, ", u = ", u, "\n")
                 theta = (l + u) / 2
                 d_bar = np.zeros((self.A, 2))
                 for a in range(self.A):
                     b = np.array(self.rewards[s, a]) + self.discount * np.array(v)
                     # print("b = ", b, "theta = ", theta)
-                    d_bar[a] = self.solve_projection(s, b, a, theta, delta, method)
+                    d_bar[a] = self.solve_projection(s, b, a, theta, delta, tt, method)
                 # print(d_bar)
                 if sum(d_bar[:, 1]) <= self.kappa:
                     u = theta
@@ -326,7 +347,10 @@ class NP_RMDP:
             return theta, alpha
 
         elif method == "QP":
-            obj = self.find_policy(s, v)[-1]
+            sol = self.find_policy(s, v, tt)
+            if len(sol) == 1:
+                return ["T.O."]
+            obj = sol[-1]
             return obj, 0
 
     def Bellman_obj(self, v, pi, P):
@@ -348,6 +372,8 @@ class NP_RMDP:
         ]
 
     def value_iteration(self, method="sp"):
+        start = time.perf_counter()
+        tt = 0
         t = 0
         v_new = np.zeros(self.S)
         pi_star = np.zeros((self.S, self.A))
@@ -357,17 +383,25 @@ class NP_RMDP:
         while (
             Delta >= self.eps * (1 - self.discount) / (2 * self.discount)
         ) and t < self.t_max:
+            tt += time.perf_counter() - start
             if t == 0:
                 Delta = 0
             v = v_new.copy()
             for s in range(self.S):
-                v_new[s], alpha[s] = self.Bellman_update(v, s, t, method)
+                sol = self.Bellman_update(v, s, t, method, tt)
+                if len(sol) == 1:
+                    return ["T.O."]
+                v_new[s], alpha[s] = sol
             Delta = max(np.array(v_new) - np.array(v))
             t += 1
+            #print("Iteration %s values: %s \n" %(t, v_new))
         self.values = v_new
 
         for s in range(self.S):
-            pi_star[s], worst[s] = self.find_policy(s, v_new)[:2]
+            sol = self.find_policy(s, v_new, tt)
+            if len(sol) == 1:
+                return [v_new, t]
+            pi_star[s], worst[s] = sol[:2]
 
         obj = np.matmul(np.array(self.P_0), np.array(v_new))
 
@@ -376,15 +410,20 @@ class NP_RMDP:
             "Values": np.round(v_new, 4),
             "Objective": np.round(obj, 4),
             "Worst": np.round(worst, 4),
+            "Nits": t
         }
 
-    def find_policy(self, s, v):
-        m = gp.Model()
-        m.Params.LogToConsole = 0
-        m.Params.OutputFlag = 0
-        m.Params.Threads = 1
-        m.Params.Presolve = 1
-
+    def find_policy(self, s, v, tt):
+        start = time.perf_counter()
+        block_print()
+        env = gp.Env()
+        env.setParam("OutputFlag", 0)
+        env.setParam("Presolve", 1)
+        env.setParam("LogToConsole", 0)
+        env.setParam("Threads", self.solver_cores)
+        m = gp.Model(env=env)
+        enable_print()
+        #print("About to start building model for the policy. \n")
         pi = m.addVars(range(self.A), vtype=GRB.CONTINUOUS, name="pi")
         nu = m.addVars(range(self.A), name="nu", lb=-GRB.INFINITY)
         eta = m.addVar(name="eta")
@@ -442,25 +481,32 @@ class NP_RMDP:
             - 0.25 * gp.quicksum(self.P_hat[s, a, s_] * x[a, s_] for (a, s_) in keys)
         )
 
+        if tt + time.perf_counter() - start > self.timeout:
+            return ["T.O."]
+
+        m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() - start)
         m.setObjective(Obj, GRB.MAXIMIZE)
+        #print("About to start solving for the policy. \n")
         m.optimize()
 
-        pi_star = np.array(m.getAttr("x", pi).values())
-        nu_star = np.array(m.getAttr("x", nu).values())
-        eta_star = eta.x
+        if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
+            pi_star = np.array(m.getAttr("x", pi).values())
+            nu_star = np.array(m.getAttr("x", nu).values())
+            eta_star = eta.x
 
-        y = np.zeros((self.A, self.S))
-        worst = np.zeros((self.A, self.S))
+            y = np.zeros((self.A, self.S))
+            worst = np.zeros((self.A, self.S))
 
-        for (a, s_) in it.product(range(self.A), range(self.S)):
-            y[a, s_] = (nu_star[a] - pi_star[a] * b[a, s_]) / eta_star
-            if self.distance == "KLD":
-                worst[a, s_] = self.P_hat[s, a, s_] * exp(y[a, s_])
-            elif self.distance == "mchisq":
-                worst[a, s_] = self.P_hat[s, a, s_] * max(1 + y[a, s_] / 2, 0)
-        obj = m.ObjVal
-
-        del m
-
-        return pi_star, worst, obj
+            for (a, s_) in it.product(range(self.A), range(self.S)):
+                y[a, s_] = (nu_star[a] - pi_star[a] * b[a, s_]) / eta_star
+                if self.distance == "KLD":
+                    worst[a, s_] = self.P_hat[s, a, s_] * exp(y[a, s_])
+                elif self.distance == "mchisq":
+                    worst[a, s_] = self.P_hat[s, a, s_] * max(1 + y[a, s_] / 2, 0)
+            obj = m.ObjVal
+            del m
+            return pi_star, worst, obj
+        else:
+            del m
+            return ["T.O."]
 
