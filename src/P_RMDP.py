@@ -12,6 +12,8 @@ from scipy.misc import derivative
 import matplotlib.pyplot as plt
 from numba import njit
 
+from .njit_functions import *
+
 class P_RMDP:
     def __init__(
         self,

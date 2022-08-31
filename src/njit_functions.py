@@ -1,5 +1,5 @@
 from numba import njit
-
+from math import log, exp
 
 @njit
 def binom_coef(n, k):
