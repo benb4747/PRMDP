@@ -205,13 +205,13 @@ def test_algorithms(inp):
     #print("solved with QP in %s seconds \n" %t_QP)
     
     res_list = (headers + [t_AS, t_probs,
-        tuple(pi_BS.flatten()), v_BS, obj_BS, theta_BS, P_BS, its_BS, t_BS, TO_BS,
-        tuple(pi_CS.flatten()), v_CS, obj_CS, theta_CS, P_CS, its_CS, t_CS, TO_CS,
-        tuple(pi_LP.flatten()), v_LP, obj_LP, theta_LP, P_LP, its_LP, t_LP, TO_LP,
-        tuple(pi_QP.flatten()), v_QP, obj_QP, P_QP, its_QP, t_QP, TO_QP,
-        tuple(pi_proj_sort.flatten()), v_proj_sort, obj_proj_sort, P_proj_sort, 
+        tuple(pi_BS.flatten()), tuple(v_BS), obj_BS, theta_BS, tuple(P_BS.flatten()), its_BS, t_BS, TO_BS,
+        tuple(pi_CS.flatten()), tuple(v_CS), obj_CS, theta_CS, tuple(P_CS.flatten()), its_CS, t_CS, TO_CS,
+        tuple(pi_LP.flatten()), tuple(v_LP), obj_LP, theta_LP, tuple(P_LP.flatten()), its_LP, t_LP, TO_LP,
+        tuple(pi_QP.flatten()), tuple(v_QP), obj_QP, tuple(P_QP.flatten()), its_QP, t_QP, TO_QP,
+        tuple(pi_proj_sort.flatten()), tuple(v_proj_sort), obj_proj_sort, tuple(P_proj_sort.flatten()), 
         its_proj_sort, t_proj_sort, TO_proj_sort,
-        tuple(pi_proj_QP.flatten()), v_proj_QP, obj_proj_QP, P_proj_QP, 
+        tuple(pi_proj_QP.flatten()), tuple(v_proj_QP), obj_proj_QP, tuple(P_proj_QP.flatten()), 
         its_proj_QP, t_proj_QP, TO_proj_QP
     ])
     
