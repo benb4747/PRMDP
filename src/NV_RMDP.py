@@ -10,6 +10,7 @@ from numba import njit
 from .P_RMDP import P_RMDP
 from .NP_RMDP import NP_RMDP
 
+
 class NV_RMDP:
     def __init__(
         self,
@@ -34,7 +35,7 @@ class NV_RMDP:
         gap,
         N,
         timeout,
-        solver_cores
+        solver_cores,
     ):
 
         self.para = para
@@ -100,7 +101,7 @@ class NV_RMDP:
                 self.kappa,
                 self.P_hat,
                 self.timeout,
-                self.solver_cores
+                self.solver_cores,
             )
         else:
             self.MDP = NP_RMDP(
@@ -116,6 +117,6 @@ class NV_RMDP:
                 self.eps,
                 self.tol,
                 self.timeout,
-                self.solver_cores
+                self.solver_cores,
             )
         return self.MDP

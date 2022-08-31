@@ -15,8 +15,23 @@ import pandas as pd
 
 
 def test_algorithms(inp):
-    (ind, q, h, c, b, C, discount, dist, t_max,
-     eps, alpha, gap, N, timeout, solver_cores) = inp
+    (
+        ind,
+        q,
+        h,
+        c,
+        b,
+        C,
+        discount,
+        dist,
+        t_max,
+        eps,
+        alpha,
+        gap,
+        N,
+        timeout,
+        solver_cores,
+    ) = inp
     headers = list(inp)
     S = C + 1
     A = C + 1
@@ -27,68 +42,83 @@ def test_algorithms(inp):
     _ = 0
     for (s, a) in it.product(range(S), range(A)):
         np.random.seed(ind * S * A + _)
-        sample = binom.rvs(C, p_0[s,a], size=N)
+        sample = binom.rvs(C, p_0[s, a], size=N)
         MLE[s, a] = sum(sample) / (N * C)
         if MLE[s, a] == 1:
             MLE[s, a] = 0.99
         elif MLE[s, a] == 0:
             MLE[s, a] = 0.01
         _ += 1
-        
+
     P_hat = np.zeros((S, A, S), dtype="object")
     for (s, a, s_) in it.product(range(S), range(A), range(S)):
         if s_ == 0:
-            P_hat[s, a, s_] = sum([
-                binompmf(C, MLE[s, a], d)
-                for d in range(min(s + a, C), C + 1)
-            ])
-        else:
-            P_hat[s, a, s_] = (
-                binompmf(C, MLE[s, a], min(s + a, C) - s_)
-
+            P_hat[s, a, s_] = sum(
+                [binompmf(C, MLE[s, a], d) for d in range(min(s + a, C), C + 1)]
             )
+        else:
+            P_hat[s, a, s_] = binompmf(C, MLE[s, a], min(s + a, C) - s_)
 
     # Parametric experiments
-    P_NV = NV_RMDP(True, q, h, c, b, C, discount, P_0,
-             dist, t_max, eps, 
-             P_hat, "mchisq", chi2.ppf(1 - alpha, A), 
-             1e-6, p_0, MLE, alpha, gap, N, timeout,
-                  solver_cores)
-    
+    P_NV = NV_RMDP(
+        True,
+        q,
+        h,
+        c,
+        b,
+        C,
+        discount,
+        P_0,
+        dist,
+        t_max,
+        eps,
+        P_hat,
+        "mchisq",
+        chi2.ppf(1 - alpha, A),
+        1e-6,
+        p_0,
+        MLE,
+        alpha,
+        gap,
+        N,
+        timeout,
+        solver_cores,
+    )
+
     # Rewards, confidence set, PMFs
     P_NV.compute_rewards()
     P_NV_MDP = P_NV.construct_MDP()
-    s=time.perf_counter()
+    s = time.perf_counter()
     try:
-        _  = P_NV_MDP.construct_conf()
+        _ = P_NV_MDP.construct_conf()
     except MemoryError:
         with open(count_file, "a") as myfile:
             myfile.write(
                 "Input %s had MemoryError while constructing base AS. \n" % ind
             )
         return
-    e=time.perf_counter()
+    e = time.perf_counter()
     if _ == "T.O.":
         with open(count_file, "a") as myfile:
             myfile.write("Input %s timed out while constructing AS.\n" % ind)
-            return 
+            return
     t_AS = np.round(e - s, 3)
     headers.append(tuple(P_NV_MDP.num_params))
-    #print("number of params: %s" %P_NV_MDP.num_params)
-    s=time.perf_counter()
+    # print("number of params: %s" %P_NV_MDP.num_params)
+    s = time.perf_counter()
     _ = P_NV_MDP.compute_probs()
-    e=time.perf_counter()
+    e = time.perf_counter()
     if _ == "T.O.":
         with open(count_file, "a") as myfile:
             myfile.write("Input %s timed out while computing probs.\n" % ind)
-            return 
+            return
     t_probs = np.round(e - s, 3)
-    #print("Constructed AS, and computed probs in %s secs. \n" %(t_probs + t_AS))
+    # print("Constructed AS, and computed probs in %s secs. \n" %(t_probs + t_AS))
     # Solve
     ## CS
-    s=time.perf_counter()
+    s = time.perf_counter()
     res_CS = P_NV_MDP.value_iteration("CS")
-    e=time.perf_counter()
+    e = time.perf_counter()
     if type(res_CS) == int:
         its_CS = res_CS
         pi_CS, v_CS, obj_CS, theta_CS, P_CS = 5 * ["T.O."]
@@ -101,12 +131,12 @@ def test_algorithms(inp):
         pi_CS, v_CS, obj_CS, theta_CS, P_CS, its_CS = res_CS.values()
         TO_CS = False
     t_CS = np.round(e - s, 3)
-    #print("solved with CS in %s seconds \n" %t_CS)
-        
+    # print("solved with CS in %s seconds \n" %t_CS)
+
     ## BS
-    s=time.perf_counter()
+    s = time.perf_counter()
     res_BS = P_NV_MDP.value_iteration("BS")
-    e=time.perf_counter()
+    e = time.perf_counter()
     if type(res_BS) == int:
         its_BS = res_BS
         pi_BS, v_BS, obj_BS, theta_BS, P_BS = 5 * ["T.O."]
@@ -119,12 +149,12 @@ def test_algorithms(inp):
         pi_BS, v_BS, obj_BS, theta_BS, P_BS, its_BS = res_BS.values()
         TO_BS = False
     t_BS = np.round(e - s, 3)
-    #print("solved with BS in %s seconds \n" %t_BS)
-    
+    # print("solved with BS in %s seconds \n" %t_BS)
+
     ## LP
-    s=time.perf_counter()
+    s = time.perf_counter()
     res_LP = P_NV_MDP.value_iteration("LP")
-    e=time.perf_counter()
+    e = time.perf_counter()
     if type(res_LP) == int:
         its_LP = res_LP
         pi_LP, v_LP, obj_LP, theta_LP, P_LP = 5 * ["T.O."]
@@ -137,24 +167,42 @@ def test_algorithms(inp):
         pi_LP, v_LP, obj_LP, theta_LP, P_LP, its_LP = res_LP.values()
         TO_LP = False
     t_LP = np.round(e - s, 3)
-    #print("solved with LP in %s seconds \n" %t_LP)
-    
+    # print("solved with LP in %s seconds \n" %t_LP)
+
     # Non parametric MDP
-    NV = NV_RMDP(False, q, h, c, b, C, discount, P_0,
-             dist, t_max, eps,
-             P_hat, "mchisq", 
-             chi2.ppf(1-alpha, A) / N, 
-             1e-6, p_0, MLE, alpha, gap, N, timeout, 
-                solver_cores)
+    NV = NV_RMDP(
+        False,
+        q,
+        h,
+        c,
+        b,
+        C,
+        discount,
+        P_0,
+        dist,
+        t_max,
+        eps,
+        P_hat,
+        "mchisq",
+        chi2.ppf(1 - alpha, A) / N,
+        1e-6,
+        p_0,
+        MLE,
+        alpha,
+        gap,
+        N,
+        timeout,
+        solver_cores,
+    )
 
     NV.compute_rewards()
     NV_MDP = NV.construct_MDP()
-        
+
     # Solve
     ## Projection algorithm where proj is solved as a QP
-    s=time.perf_counter()
+    s = time.perf_counter()
     res_proj_QP = NV_MDP.value_iteration("proj_qp")
-    e=time.perf_counter()
+    e = time.perf_counter()
     if type(res_proj_QP) == int:
         its_proj_QP = res_proj_QP
         pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP = 4 * ["T.O."]
@@ -164,15 +212,21 @@ def test_algorithms(inp):
         pi_proj_QP, obj_proj_QP, P_proj_QP = 3 * ["T.O."]
         TO_proj_QP = True
     else:
-        pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP, its_proj_QP = res_proj_QP.values()
+        (
+            pi_proj_QP,
+            v_proj_QP,
+            obj_proj_QP,
+            P_proj_QP,
+            its_proj_QP,
+        ) = res_proj_QP.values()
         TO_proj_QP = False
     t_proj_QP = np.round(e - s, 3)
-    #print("solved with proj_QP in %s seconds \n" %t_proj_QP)
-    
+    # print("solved with proj_QP in %s seconds \n" %t_proj_QP)
+
     ## Projection solved by sort algorithm
-    s=time.perf_counter()
+    s = time.perf_counter()
     res_proj_sort = NV_MDP.value_iteration("proj_sort")
-    e=time.perf_counter()
+    e = time.perf_counter()
     if type(res_proj_sort) == int:
         its_proj_sort = res_proj_sort
         pi_proj_sort, v_proj_sort, obj_proj_sort, P_proj_sort = 4 * ["T.O."]
@@ -182,14 +236,20 @@ def test_algorithms(inp):
         pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * ["T.O."]
         TO_proj_sort = True
     else:
-        pi_proj_sort, v_proj_sort, obj_proj_sort, P_proj_sort, its_proj_sort = res_proj_sort.values()
+        (
+            pi_proj_sort,
+            v_proj_sort,
+            obj_proj_sort,
+            P_proj_sort,
+            its_proj_sort,
+        ) = res_proj_sort.values()
         TO_proj_sort = False
     t_proj_sort = np.round(e - s, 3)
-    #print("solved with proj_sort in %s seconds \n" %t_proj_sort)
-    
-    s=time.perf_counter()
+    # print("solved with proj_sort in %s seconds \n" %t_proj_sort)
+
+    s = time.perf_counter()
     res_QP = NV_MDP.value_iteration("QP")
-    e=time.perf_counter()
+    e = time.perf_counter()
     if type(res_QP) == int:
         its_QP = res_QP
         pi_QP, v_QP, obj_QP, P_QP = 4 * ["T.O."]
@@ -202,26 +262,66 @@ def test_algorithms(inp):
         pi_QP, v_QP, obj_QP, P_QP, its_QP = res_QP.values()
         TO_QP = False
     t_QP = np.round(e - s, 3)
-    #print("solved with QP in %s seconds \n" %t_QP)
-    
-    res_list = (headers + [t_AS, t_probs,
-        tuple(pi_BS.flatten()), tuple(v_BS), obj_BS, theta_BS, tuple(P_BS.flatten()), its_BS, t_BS, TO_BS,
-        tuple(pi_CS.flatten()), tuple(v_CS), obj_CS, theta_CS, tuple(P_CS.flatten()), its_CS, t_CS, TO_CS,
-        tuple(pi_LP.flatten()), tuple(v_LP), obj_LP, theta_LP, tuple(P_LP.flatten()), its_LP, t_LP, TO_LP,
-        tuple(pi_QP.flatten()), tuple(v_QP), obj_QP, tuple(P_QP.flatten()), its_QP, t_QP, TO_QP,
-        tuple(pi_proj_sort.flatten()), tuple(v_proj_sort), obj_proj_sort, tuple(P_proj_sort.flatten()), 
-        its_proj_sort, t_proj_sort, TO_proj_sort,
-        tuple(pi_proj_QP.flatten()), tuple(v_proj_QP), obj_proj_QP, tuple(P_proj_QP.flatten()), 
-        its_proj_QP, t_proj_QP, TO_proj_QP
-    ])
-    
+    # print("solved with QP in %s seconds \n" %t_QP)
+
+    res_list = headers + [
+        t_AS,
+        t_probs,
+        tuple(pi_BS.flatten()),
+        tuple(v_BS),
+        obj_BS,
+        theta_BS,
+        tuple(P_BS.flatten()),
+        its_BS,
+        t_BS,
+        TO_BS,
+        tuple(pi_CS.flatten()),
+        tuple(v_CS),
+        obj_CS,
+        theta_CS,
+        tuple(P_CS.flatten()),
+        its_CS,
+        t_CS,
+        TO_CS,
+        tuple(pi_LP.flatten()),
+        tuple(v_LP),
+        obj_LP,
+        theta_LP,
+        tuple(P_LP.flatten()),
+        its_LP,
+        t_LP,
+        TO_LP,
+        tuple(pi_QP.flatten()),
+        tuple(v_QP),
+        obj_QP,
+        tuple(P_QP.flatten()),
+        its_QP,
+        t_QP,
+        TO_QP,
+        tuple(pi_proj_sort.flatten()),
+        tuple(v_proj_sort),
+        obj_proj_sort,
+        tuple(P_proj_sort.flatten()),
+        its_proj_sort,
+        t_proj_sort,
+        TO_proj_sort,
+        tuple(pi_proj_QP.flatten()),
+        tuple(v_proj_QP),
+        obj_proj_QP,
+        tuple(P_proj_QP.flatten()),
+        its_proj_QP,
+        t_proj_QP,
+        TO_proj_QP,
+    ]
+
     with open(count_file, "a") as myfile:
         myfile.write("Finished solving input %s\n" % ind)
-    
+
     with open(results_file, "a") as res_file:
         res_file.write(str(res_list) + "\n")
-        
+
     return
+
 
 def test_algorithms_mp(inp):
     ind = inp[0]
@@ -232,16 +332,17 @@ def test_algorithms_mp(inp):
             res_file.write("Input %s failed.\n" % ind)
         logging.exception("Input %s failed.\n" % ind)
 
+
 cores = 32
 loop_cores = 8
 solver_cores = int(cores / loop_cores)
-        
+
 q_vals = [10, 25, 50]
 h_vals = [10, 25, 50]
 c_vals = [10, 25, 50]
 b_vals = [10, 25, 50]
 
-C_vals = [1, 3, 7] # inventory capacity, to ensure finite state space
+C_vals = [1, 3, 7]  # inventory capacity, to ensure finite state space
 discount = 0.5
 
 dist = "binomial"
@@ -254,9 +355,7 @@ N_vals = [10, 50]
 
 timeout = 4 * 60 * 60
 inputs = [
-    (q, h, c, b, C, discount,
-     dist, t_max, eps, alpha, gap, N, timeout,
-    solver_cores)
+    (q, h, c, b, C, discount, dist, t_max, eps, alpha, gap, N, timeout, solver_cores)
     for q in q_vals
     for h in h_vals
     for c in c_vals
@@ -269,25 +368,77 @@ for i in inputs:
     inputs[inputs.index(i)] = tuple([inputs.index(i)] + list(i))
 
 
-names = (["q", "h", "c", "b", "C", "discount",
-    "dist", "t_max", "eps", "alpha", "gap", "N", "timeout",
-    "solver_cores"] + ["t_AS", "t_probs",
-        "pi_BS", "v_BS", "obj_BS", "theta_BS", "P_BS", "its_BS", "t_BS", "TO_BS",
-        "pi_CS", "v_CS", "obj_CS", "theta_CS", "P_CS", "its_CS", "t_CS", "TO_CS",
-        "pi_LP", "v_LP", "obj_LP", "theta_LP", "P_LP", "its_LP", "t_LP", "TO_LP",
-        "pi_QP", "v_QP", "obj_QP", "P_QP", "its_QP", "t_QP", "TO_QP",
-        "pi_proj_sort", "v_proj_sort", "obj_proj_sort", "P_proj_sort", 
-        "its_proj_sort", "t_proj_sort", "TO_proj_sort",
-        "pi_proj_QP", "v_proj_QP", "obj_proj_QP", "P_proj_QP", 
-        "its_proj_QP", "t_proj_QP", "TO_proj_QP"
-    ])
+names = [
+    "q",
+    "h",
+    "c",
+    "b",
+    "C",
+    "discount",
+    "dist",
+    "t_max",
+    "eps",
+    "alpha",
+    "gap",
+    "N",
+    "timeout",
+    "solver_cores",
+] + [
+    "t_AS",
+    "t_probs",
+    "pi_BS",
+    "v_BS",
+    "obj_BS",
+    "theta_BS",
+    "P_BS",
+    "its_BS",
+    "t_BS",
+    "TO_BS",
+    "pi_CS",
+    "v_CS",
+    "obj_CS",
+    "theta_CS",
+    "P_CS",
+    "its_CS",
+    "t_CS",
+    "TO_CS",
+    "pi_LP",
+    "v_LP",
+    "obj_LP",
+    "theta_LP",
+    "P_LP",
+    "its_LP",
+    "t_LP",
+    "TO_LP",
+    "pi_QP",
+    "v_QP",
+    "obj_QP",
+    "P_QP",
+    "its_QP",
+    "t_QP",
+    "TO_QP",
+    "pi_proj_sort",
+    "v_proj_sort",
+    "obj_proj_sort",
+    "P_proj_sort",
+    "its_proj_sort",
+    "t_proj_sort",
+    "TO_proj_sort",
+    "pi_proj_QP",
+    "v_proj_QP",
+    "obj_proj_QP",
+    "P_proj_QP",
+    "its_proj_QP",
+    "t_proj_QP",
+    "TO_proj_QP",
+]
 
 test_full = inputs
 q_ind = int(sys.argv[1]) - 1
 results_file = "inf_NV_results.txt"
 count_file = "inf_NV_count.txt"
 
-continuing = True
+continuing = False
 
 if continuing:
     file1 = open(results_file, "r")
@@ -328,7 +479,7 @@ if continuing:
 else:
     test = test_full
 
-#if T == 2 and continuing:
+# if T == 2 and continuing:
 if q_ind == 0 and continuing:
     with open(count_file, "a") as myfile:
         myfile.write(
@@ -341,10 +492,7 @@ if q_ind == 0 and not continuing:
     open(count_file, "w").close()
     open(results_file, "w").close()
     with open(count_file, "a") as myfile:
-        myfile.write(
-            "About to start solving %s RMDP instances. \n"
-            % len(test)
-        )
+        myfile.write("About to start solving %s RMDP instances. \n" % len(test))
     with open(results_file, "a") as myfile:
         myfile.write(str(names) + "\n")
 

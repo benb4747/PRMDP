@@ -14,6 +14,7 @@ from numba import njit
 
 from .njit_functions import *
 
+
 class P_RMDP:
     def __init__(
         self,
@@ -34,7 +35,7 @@ class P_RMDP:
         kappa,
         P_hat,
         timeout,
-        solver_cores
+        solver_cores,
     ):
 
         self.states = states
@@ -170,7 +171,7 @@ class P_RMDP:
         if tt + t_build > self.timeout:
             return ["T.O."]
 
-        m.Params.TimeLimit  = self.timeout - tt - t_build
+        m.Params.TimeLimit = self.timeout - tt - t_build
         m.optimize()
 
         if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
@@ -423,22 +424,22 @@ class P_RMDP:
                 if method == "LP":
                     sol = self.Bellman_LP(v, s, t, AS, tt)
                     if len(sol) == 1:
-                        return t # timeout
+                        return t  # timeout
                     m, dv, dummy, reward = sol
-                    
+
                     obj = m.ObjVal
 
                 elif method == "CS":
                     sol = self.Bellman_CS(v, s, t, tt)
                     if len(sol) == 1:
-                        return t # timeout
+                        return t  # timeout
                     m, dv = sol
                     obj = m.ObjVal
 
                 elif method == "BS":
                     sol = self.Bellman_BS(v, s, t, tt)
                     if len(sol) == 1:
-                        return t # timeout
+                        return t  # timeout
                     obj, theta = sol
                     theta_BS[s] = theta
 
@@ -458,7 +459,7 @@ class P_RMDP:
             for s in range(self.S):
                 sol = self.Bellman_CS(v, s, t, tt)
                 if len(sol) == 1:
-                    return [v_new, t] # timeout
+                    return [v_new, t]  # timeout
                 m, pi = self.Bellman_CS(v, s, t, tt)
                 pi_star[s] = np.array((m.getAttr("x", pi).values()))
                 del m
@@ -506,5 +507,5 @@ class P_RMDP:
             "Objective": obj,
             "Worst param": worst_param,
             "Worst dist": worst_dist,
-            "Nits": t
+            "Nits": t,
         }

@@ -11,6 +11,7 @@ def block_print():
 def enable_print():
     sys.stdout = sys.__stdout__
 
+
 @njit
 def binom_coef(n, k):
     out = 1
@@ -45,7 +46,8 @@ def binom_conf_val(A, C, N, theta, MLE):
     for a in range(A):
         val += N * C * ((theta[a] - MLE[a]) ** 2) / (MLE[a] * (1 - MLE[a]))
     return val
-    
+
+
 @njit
 def binom_probs_fast(S, A, s, a, theta):
     probs = []

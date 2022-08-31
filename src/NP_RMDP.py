@@ -10,6 +10,7 @@ from math import log, exp
 from scipy.misc import derivative
 from .njit_functions import block_print, enable_print
 
+
 class NP_RMDP:
     def __init__(
         self,
@@ -25,7 +26,7 @@ class NP_RMDP:
         eps,
         tol,
         timeout,
-        solver_cores
+        solver_cores,
     ):
         self.states = states
         self.actions = actions
@@ -178,7 +179,7 @@ class NP_RMDP:
                 except ValueError:
                     u = x
                     continue
-                
+
                 if self.projection_deriv(x, s, b, a, beta) > 0:
                     l = x
                 else:
@@ -221,12 +222,11 @@ class NP_RMDP:
                 )
                 if tt + (time.perf_counter() - start) > self.timeout:
                     return ["T.O."]
-                m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() 
-                                                    - start)
+                m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() - start)
                 m.setObjective(Obj, GRB.MAXIMIZE)
 
                 m.optimize()
-                if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:  
+                if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
                     alpha_star = alpha.x
                     zeta_star = zeta.x
 
@@ -256,7 +256,7 @@ class NP_RMDP:
                     else:
                         best_alpha = []
                     for case in range(3):
-                        if tt +  time.perf_counter() - start > self.timeout:
+                        if tt + time.perf_counter() - start > self.timeout:
                             return ["T.O."]
                         if ((case == 0) and (S_hat == S_ - 1)) or (
                             (case == 1) and S_hat == 0
@@ -320,7 +320,7 @@ class NP_RMDP:
             alpha = np.zeros(self.A)
             condition = True
             while condition:
-                if tt +  time.perf_counter() - start > self.timeout:
+                if tt + time.perf_counter() - start > self.timeout:
                     return ["T.O."]
                 # print("l = ", l, ", u = ", u, "\n")
                 theta = (l + u) / 2
@@ -390,7 +390,7 @@ class NP_RMDP:
                 v_new[s], alpha[s] = sol
             Delta = max(np.array(v_new) - np.array(v))
             t += 1
-            #print("Iteration %s values: %s \n" %(t, v_new))
+            # print("Iteration %s values: %s \n" %(t, v_new))
         self.values = v_new
 
         for s in range(self.S):
@@ -406,7 +406,7 @@ class NP_RMDP:
             "Values": np.round(v_new, 4),
             "Objective": np.round(obj, 4),
             "Worst": np.round(worst, 4),
-            "Nits": t
+            "Nits": t,
         }
 
     def find_policy(self, s, v, tt):
@@ -419,7 +419,7 @@ class NP_RMDP:
         env.setParam("Threads", self.solver_cores)
         m = gp.Model(env=env)
         enable_print()
-        #print("About to start building model for the policy. \n")
+        # print("About to start building model for the policy. \n")
         pi = m.addVars(range(self.A), vtype=GRB.CONTINUOUS, name="pi")
         nu = m.addVars(range(self.A), name="nu", lb=-GRB.INFINITY)
         eta = m.addVar(name="eta")
@@ -482,7 +482,7 @@ class NP_RMDP:
 
         m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() - start)
         m.setObjective(Obj, GRB.MAXIMIZE)
-        #print("About to start solving for the policy. \n")
+        # print("About to start solving for the policy. \n")
         m.optimize()
 
         if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
@@ -505,4 +505,3 @@ class NP_RMDP:
         else:
             del m
             return ["T.O."]
-
