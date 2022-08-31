@@ -342,7 +342,7 @@ if q_ind == 0 and not continuing:
     open(results_file, "w").close()
     with open(count_file, "a") as myfile:
         myfile.write(
-            "About to start solving %s RMDPs instances. \n"
+            "About to start solving %s RMDP instances. \n"
             % len(test)
         )
     with open(results_file, "a") as myfile:
