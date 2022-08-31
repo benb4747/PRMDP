@@ -1,19 +1,14 @@
 import numpy as np
-import pandas as pd
 from scipy.stats import chi2, norm, poisson, binom
-import gurobipy as gp
-from gurobipy import GRB
 import time
 import itertools as it
 
 from math import log, exp
-from scipy.optimize import bisect
-from scipy.misc import derivative
 import matplotlib.pyplot as plt
 from numba import njit
 
-from .P_RMDP import *
-from .NP_RMDP import *
+from .P_RMDP import P_RMDP
+from .NP_RMDP import NP_RMDP
 
 class NV_RMDP:
     def __init__(

@@ -45,9 +45,7 @@ def binom_conf_val(A, C, N, theta, MLE):
     for a in range(A):
         val += N * C * ((theta[a] - MLE[a]) ** 2) / (MLE[a] * (1 - MLE[a]))
     return val
-
-
-
+    
 @njit
 def binom_probs_fast(S, A, s, a, theta):
     probs = []

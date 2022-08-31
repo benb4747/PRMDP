@@ -1,14 +1,17 @@
 import sys, os
-#sys.path.append(os.path.relpath("../Repo/src/PDRO_Newsvendor/"))
-sys.path.append("C:/Users/blackb/OneDrive - Lancaster University/PhD/Main Projects/Robust MDPs/PRMDP/")
-from src.njit_functions import *
-from src.NP_RMDP import *
-from src.NV_RMDP import *
-from src.P_RMDP import *
+from src.NP_RMDP import NP_RMDP
+from src.NV_RMDP import NV_RMDP
+from src.P_RMDP import P_RMDP
+from src.njit_functions import binompmf
 
+import numpy as np
+import itertools as it
+import time
 import datetime
 import logging
 from multiprocessing import Pool
+from scipy.stats import chi2, binom
+import pandas as pd
 
 
 def test_algorithms(inp):
@@ -154,11 +157,11 @@ def test_algorithms(inp):
     e=time.perf_counter()
     if type(res_proj_QP) == int:
         its_proj_QP = res_proj_QP
-        pi_proj_QP, v_proj_QP, obj_proj_QP, theta_proj_QP, P_proj_QP = 5 * ["T.O."]
+        pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP = 4 * ["T.O."]
         TO_proj_QP = True
     elif type(res_proj_QP) == list:
         v_proj_QP, its_proj_QP = res_proj_QP
-        pi_proj_QP, obj_proj_QP, theta_proj_QP, P_proj_QP = 4 * ["T.O."]
+        pi_proj_QP, obj_proj_QP, P_proj_QP = 3 * ["T.O."]
         TO_proj_QP = True
     else:
         pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP, its_proj_QP = res_proj_QP.values()
@@ -172,11 +175,11 @@ def test_algorithms(inp):
     e=time.perf_counter()
     if type(res_proj_sort) == int:
         its_proj_sort = res_proj_sort
-        pi_proj_sort, v_proj_sort, obj_proj_sort, theta_proj_sort, P_proj_sort = 5 * ["T.O."]
+        pi_proj_sort, v_proj_sort, obj_proj_sort, P_proj_sort = 4 * ["T.O."]
         TO_proj_sort = True
     elif type(res_proj_sort) == list:
         v_proj_sort, its_proj_sort = res_proj_sort
-        pi_proj_sort, obj_proj_sort, theta_proj_sort, P_proj_sort = 4 * ["T.O."]
+        pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * ["T.O."]
         TO_proj_sort = True
     else:
         pi_proj_sort, v_proj_sort, obj_proj_sort, P_proj_sort, its_proj_sort = res_proj_sort.values()
@@ -189,11 +192,11 @@ def test_algorithms(inp):
     e=time.perf_counter()
     if type(res_QP) == int:
         its_QP = res_QP
-        pi_QP, v_QP, obj_QP, theta_QP, P_QP = 5 * ["T.O."]
+        pi_QP, v_QP, obj_QP, P_QP = 4 * ["T.O."]
         TO_QP = True
     elif type(res_QP) == list:
         v_QP, its_QP = res_QP
-        pi_QP, obj_QP, theta_QP, P_QP = 4 * ["T.O."]
+        pi_QP, obj_QP, P_QP = 3 * ["T.O."]
         TO_QP = True
     else:
         pi_QP, v_QP, obj_QP, P_QP, its_QP = res_QP.values()
@@ -201,7 +204,7 @@ def test_algorithms(inp):
     t_QP = np.round(e - s, 3)
     #print("solved with QP in %s seconds \n" %t_QP)
     
-    res_list = (headers + [
+    res_list = (headers + [t_AS, t_probs,
         tuple(pi_BS.flatten()), v_BS, obj_BS, theta_BS, P_BS, its_BS, t_BS, TO_BS,
         tuple(pi_CS.flatten()), v_CS, obj_CS, theta_CS, P_CS, its_CS, t_CS, TO_CS,
         tuple(pi_LP.flatten()), v_LP, obj_LP, theta_LP, P_LP, its_LP, t_LP, TO_LP,
@@ -264,6 +267,20 @@ inputs = [
 ]
 for i in inputs:
     inputs[inputs.index(i)] = tuple([inputs.index(i)] + list(i))
+
+
+names = (["q", "h", "c", "b", "C", "discount",
+    "dist", "t_max", "eps", "alpha", "gap", "N", "timeout",
+    "solver_cores"] + ["t_AS", "t_probs",
+        "pi_BS", "v_BS", "obj_BS", "theta_BS", "P_BS", "its_BS", "t_BS", "TO_BS",
+        "pi_CS", "v_CS", "obj_CS", "theta_CS", "P_CS", "its_CS", "t_CS", "TO_CS",
+        "pi_LP", "v_LP", "obj_LP", "theta_LP", "P_LP", "its_LP", "t_LP", "TO_LP",
+        "pi_QP", "v_QP", "obj_QP", "P_QP", "its_QP", "t_QP", "TO_QP",
+        "pi_proj_sort", "v_proj_sort", "obj_proj_sort", "P_proj_sort", 
+        "its_proj_sort", "t_proj_sort", "TO_proj_sort",
+        "pi_proj_QP", "v_proj_QP", "obj_proj_QP", "P_proj_QP", 
+        "its_proj_QP", "t_proj_QP", "TO_proj_QP"
+    ])
 
 test_full = inputs
 q_ind = int(sys.argv[1]) - 1

@@ -7,12 +7,8 @@ import time
 import itertools as it
 
 from math import log, exp
-from scipy.optimize import bisect
 from scipy.misc import derivative
-import matplotlib.pyplot as plt
-from numba import njit
-
-from src.njit_functions import *
+from .njit_functions import block_print, enable_print
 
 class NP_RMDP:
     def __init__(
