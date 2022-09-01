@@ -74,7 +74,7 @@ class P_RMDP:
                         (th * (1 - th) * chi2.ppf(1 - self.alpha, self.A))
                         / (self.N * (self.S - 1))
                     ),
-                    1
+                    1,
                 )
                 lb = max(
                     th
@@ -82,7 +82,7 @@ class P_RMDP:
                         (th * (1 - th) * chi2.ppf(1 - self.alpha, self.A))
                         / (self.N * (self.S - 1))
                     ),
-                    0
+                    0,
                 )
                 ranges[s, a] = np.arange(lb, ub + gap, gap)
 
@@ -91,17 +91,20 @@ class P_RMDP:
                 for s in range(self.S)
             ]
             Theta = np.zeros(self.S, dtype="object")
+            kappa = chi2.ppf(1 - self.alpha, self.A)
             for s in range(self.S):
                 now = time.perf_counter()
                 if now - start > self.timeout:
                     return "T.O."
-                Theta_s = [
-                    theta
-                    for theta in theta_base[s]
-                    if binom_conf_val(self.A, self.S - 1, self.N, theta, self.MLE[s])
-                    <= chi2.ppf(1 - self.alpha, self.A)
-                    and max(theta) <= 1 and min(theta) >= 0
-                ]
+                Theta_s = compute_conf_set(
+                    np.array(list(theta_base[s])),
+                    self.A,
+                    self.S - 1,
+                    self.N,
+                    self.MLE[s],
+                    kappa,
+                )
+                Theta_s = [tuple(theta) for theta in Theta_s]
                 if tuple(self.MLE[s]) not in Theta_s:
                     Theta_s.append(tuple(self.MLE[s]))
                 Theta[s] = Theta_s
@@ -222,7 +225,7 @@ class P_RMDP:
         roots = []
         if self.dist == "binomial":
             delta_ = np.sqrt(
-                delta * self.MLE[s, a] * (1 - self.MLE[s, a]) / (self.N * self.S - 1)
+                delta * self.MLE[s, a] * (1 - self.MLE[s, a]) / (self.N * (self.S - 1))
             )
         # print("Running bisection for proj, state ", s, "action ", a)
         for run in range(len(intervals)):
@@ -449,8 +452,8 @@ class P_RMDP:
                 v_new[s] = obj
 
                 Delta = max(np.array(v_new) - np.array(v))
-            # print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
-            #      "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
+            #print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
+             #     "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
             t += 1
 
         if method == "BS":
@@ -481,7 +484,7 @@ class P_RMDP:
             rewards_opt = [
                 sum([pi_star[s, a] * reward[a, i] for a in range(self.A)])
                 for i in range(self.num_params[s])
-            ]   
+            ]
             worst_ind = np.argmin(rewards_opt)
             worst_param[s] = np.array(self.Theta[s][worst_ind])
             for a in range(self.A):
@@ -503,7 +506,7 @@ class P_RMDP:
             np.round(pi_star, 4),
             np.round(v_new, 4),
             np.round(obj, 4),
-            np.round(worst_param, 4), 
-            np.round(worst_dist, 4), 
-            t
+            np.round(worst_param, 4),
+            np.round(worst_dist, 4),
+            t,
         ]

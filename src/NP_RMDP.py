@@ -239,7 +239,7 @@ class NP_RMDP:
                     ]
                 else:
                     print("proj_qp timed out while solving a proj")
-                    print("status of gurobi model: %s" %m.Status)
+                    print("status of gurobi model: %s" % m.Status)
                     return ["T.O."]
 
             elif method == "proj_sort":
@@ -353,6 +353,9 @@ class NP_RMDP:
             if len(sol) == 1:
                 return ["T.O."]
             obj = sol[-1]
+            # pi_star, worst, obj = sol
+            # b = np.array(self.rewards[s]) + self.discount * np.array(v)
+            # obj = sum([pi_star[a] * sum([worst[a, s_] * b[a, s_] for s_ in range(self.S)]) for a in range(self.A)])
             return obj, 0
 
     def Bellman_obj(self, v, pi, P):
@@ -386,7 +389,7 @@ class NP_RMDP:
             Delta >= self.eps * (1 - self.discount) / (2 * self.discount)
         ) and t < self.t_max:
             tt = time.perf_counter() - start
-            #print("iteration %s time taken so far %s\n" %(t, tt))
+            # print("iteration %s time taken so far %s\n" %(t, tt))
             if t == 0:
                 Delta = 0
             v = v_new.copy()
@@ -397,7 +400,8 @@ class NP_RMDP:
                 v_new[s], alpha[s] = sol
             Delta = max(np.array(v_new) - np.array(v))
             t += 1
-            # print("Iteration %s values: %s \n" %(t, v_new))
+            print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
+                "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
         self.values = v_new
 
         for s in range(self.S):
@@ -413,7 +417,7 @@ class NP_RMDP:
             np.round(v_new, 4),
             np.round(obj, 4),
             np.round(worst, 4),
-            t
+            t,
         ]
 
     def find_policy(self, s, v, tt):

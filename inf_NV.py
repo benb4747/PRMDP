@@ -33,9 +33,7 @@ def test_algorithms(inp):
         solver_cores,
     ) = inp
     with open(start_file, "a") as myfile:
-        myfile.write(
-            "Starting input %s.\n" % ind
-        )
+        myfile.write("Starting input %s.\n" % ind)
     headers = list(inp)
     S = C + 1
     A = C + 1
@@ -259,7 +257,7 @@ def test_algorithms(inp):
         its_QP = res_QP
         pi_QP, v_QP, obj_QP, P_QP = 4 * [np.array("T.O.")]
         TO_QP = True
-        #...
+        # ...
     elif len(res_QP) == 2:
         v_QP, its_QP = res_QP
         pi_QP, obj_QP, P_QP = 3 * [np.array("T.O.")]
@@ -311,13 +309,13 @@ def test_algorithms(inp):
         its_proj_sort,
         t_proj_sort,
         TO_proj_sort
-        #tuple(pi_proj_QP.flatten()),
-        #tuple(v_proj_QP),
-        #obj_proj_QP,
-        #tuple(P_proj_QP.flatten()),
-        #its_proj_QP,
-        #t_proj_QP,
-        #TO_proj_QP
+        # tuple(pi_proj_QP.flatten()),
+        # tuple(v_proj_QP),
+        # obj_proj_QP,
+        # tuple(P_proj_QP.flatten()),
+        # its_proj_QP,
+        # t_proj_QP,
+        # TO_proj_QP
     ]
 
     with open(count_file, "a") as myfile:
@@ -391,7 +389,7 @@ names = [
     "N",
     "timeout",
     "solver_cores",
-    "num_params"
+    "num_params",
 ] + [
     "t_AS",
     "t_probs",

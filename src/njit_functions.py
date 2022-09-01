@@ -4,6 +4,7 @@ import sys, os
 import numpy as np
 import pandas as pd
 
+
 def read_results(file):
     file1 = open(file, "r")
     lines = file1.readlines()
@@ -20,6 +21,7 @@ def read_results(file):
     res_array = np.array(lines_new)
     df = pd.DataFrame(data=res_array, columns=names, index=res_array[:, 0])
     return df
+
 
 # Disable
 def block_print():
@@ -65,6 +67,19 @@ def binom_conf_val(A, C, N, theta, MLE):
     for a in range(A):
         val += N * C * ((theta[a] - MLE[a]) ** 2) / (MLE[a] * (1 - MLE[a]))
     return val
+
+
+@njit
+def compute_conf_set(base, A, C, N, MLE, kappa):
+    conf_set = []
+    n = base.shape[0]
+    for i in range(n):
+        theta = base[i]
+        if min(theta) >= 0 and max(theta) <= 1:
+            conf = binom_conf_val(A, C, N, theta, MLE)
+            if conf <= kappa:
+                conf_set.append(theta)
+    return conf_set
 
 
 @njit
