@@ -1,6 +1,25 @@
 from numba import njit
 from math import log, exp
 import sys, os
+import numpy as np
+import pandas as pd
+
+def read_results(file):
+    file1 = open(file, "r")
+    lines = file1.readlines()
+    file1.close()
+
+    lines_new = []
+    names = eval(lines[0])
+    for line in lines[1:]:
+        line = line.rstrip("\n")
+        if "failed" not in line:
+            lines_new.append(eval(line))
+    print("Dataset has %s rows." % len(lines_new))
+
+    res_array = np.array(lines_new)
+    df = pd.DataFrame(data=res_array, columns=names, index=res_array[:, 0])
+    return df
 
 # Disable
 def block_print():

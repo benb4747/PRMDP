@@ -199,7 +199,7 @@ def test_algorithms(inp):
     NV_MDP = NV.construct_MDP()
 
     # Solve
-    ## Projection algorithm where proj is solved as a QP
+    """## Projection algorithm where proj is solved as a QP
     s = time.perf_counter()
     res_proj_QP = NV_MDP.value_iteration("proj_qp")
     e = time.perf_counter()
@@ -220,7 +220,7 @@ def test_algorithms(inp):
             its_proj_QP,
         ) = res_proj_QP
         TO_proj_QP = False
-    t_proj_QP = np.round(e - s, 3)
+    t_proj_QP = np.round(e - s, 3)"""
     # print("solved with proj_QP in %s seconds \n" %t_proj_QP)
 
     ## Projection solved by sort algorithm
@@ -305,14 +305,14 @@ def test_algorithms(inp):
         tuple(P_proj_sort.flatten()),
         its_proj_sort,
         t_proj_sort,
-        TO_proj_sort,
-        tuple(pi_proj_QP.flatten()),
-        tuple(v_proj_QP),
-        obj_proj_QP,
-        tuple(P_proj_QP.flatten()),
-        its_proj_QP,
-        t_proj_QP,
-        TO_proj_QP,
+        TO_proj_sort
+        #tuple(pi_proj_QP.flatten()),
+        #tuple(v_proj_QP),
+        #obj_proj_QP,
+        #tuple(P_proj_QP.flatten()),
+        #its_proj_QP,
+        #t_proj_QP,
+        #TO_proj_QP
     ]
 
     with open(count_file, "a") as myfile:
@@ -343,7 +343,7 @@ h_vals = [10, 25, 50]
 c_vals = [10, 25, 50]
 b_vals = [10, 25, 50]
 
-C_vals = [1, 3, 7]  # inventory capacity, to ensure finite state space
+C_vals = [1, 3, 5]  # inventory capacity, to ensure finite state space
 discount = 0.5
 
 dist = "binomial"
@@ -364,12 +364,14 @@ inputs = [
     for C in C_vals
     for gap in gap_vals
     for N in N_vals
+    if c > q
 ]
 for i in inputs:
     inputs[inputs.index(i)] = tuple([inputs.index(i)] + list(i))
 
 
 names = [
+    "ind",
     "q",
     "h",
     "c",
@@ -384,6 +386,7 @@ names = [
     "N",
     "timeout",
     "solver_cores",
+    "num_params"
 ] + [
     "t_AS",
     "t_probs",
@@ -424,18 +427,18 @@ names = [
     "P_proj_sort",
     "its_proj_sort",
     "t_proj_sort",
-    "TO_proj_sort",
-    "pi_proj_QP",
-    "v_proj_QP",
-    "obj_proj_QP",
-    "P_proj_QP",
-    "its_proj_QP",
-    "t_proj_QP",
-    "TO_proj_QP",
+    "TO_proj_sort"
+    # "pi_proj_QP",
+    # "v_proj_QP",
+    # "obj_proj_QP",
+    # "P_proj_QP",
+    # "its_proj_QP",
+    # "t_proj_QP",
+    # "TO_proj_QP",
 ]
 
 test_full = inputs
-q_ind = int(sys.argv[1]) - 1
+h_ind = int(sys.argv[1]) - 1
 results_file = "results_inf_NV.txt"
 count_file = "count_inf_NV.txt"
 
@@ -481,7 +484,7 @@ else:
     test = test_full
 
 # if T == 2 and continuing:
-if q_ind == 0 and continuing:
+if h_ind == 0 and continuing:
     with open(count_file, "a") as myfile:
         myfile.write(
             "About to start solving the %s instances that didn't finish solving before. \n"
@@ -489,7 +492,7 @@ if q_ind == 0 and continuing:
         )
 
 # wipes results file
-if q_ind == 0 and not continuing:
+if h_ind == 0 and not continuing:
     open(count_file, "w").close()
     open(results_file, "w").close()
     with open(count_file, "a") as myfile:
@@ -497,7 +500,7 @@ if q_ind == 0 and not continuing:
     with open(results_file, "a") as myfile:
         myfile.write(str(names) + "\n")
 
-test = [i for i in test if i[1] == q_vals[q_ind]]
+test = [i for i in test if i[2] == h_vals[h_ind]]
 
 if __name__ == "__main__":
     with Pool(processes=loop_cores) as p:

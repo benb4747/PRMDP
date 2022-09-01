@@ -221,6 +221,7 @@ class NP_RMDP:
                     - gp.quicksum(self.P_hat[s, a, s_] * x[s_] for s_ in keys)
                 )
                 if tt + (time.perf_counter() - start) > self.timeout:
+                    print("proj_qp timed out before solving a proj problem")
                     return ["T.O."]
                 m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() - start)
                 m.setObjective(Obj, GRB.MAXIMIZE)
@@ -237,6 +238,8 @@ class NP_RMDP:
                         self.projection_obj_true(alpha_star, s, b, a, beta, zeta_star),
                     ]
                 else:
+                    print("proj_qp timed out while solving a proj")
+                    print("status of gurobi model: %s" %m.Status)
                     return ["T.O."]
 
             elif method == "proj_sort":
@@ -382,7 +385,8 @@ class NP_RMDP:
         while (
             Delta >= self.eps * (1 - self.discount) / (2 * self.discount)
         ) and t < self.t_max:
-            tt += time.perf_counter() - start
+            tt = time.perf_counter() - start
+            #print("iteration %s time taken so far %s\n" %(t, tt))
             if t == 0:
                 Delta = 0
             v = v_new.copy()

@@ -269,7 +269,6 @@ class P_RMDP:
         conf = np.zeros((self.A, 2))
         condition = True
         while condition:
-            tt += time.perf_counter() - start
             # print("l = ", l, ", u = ", u, "\n")
             x = (l + u) / 2
             theta_BS = np.zeros(self.A)
@@ -302,8 +301,8 @@ class P_RMDP:
         Theta = [tuple(theta) for theta in self.Theta[s]]
         k = 0
         while k < k_max:
-            tt += time.perf_counter() - start
-            if tt > self.timeout:
+            tt_CS = time.perf_counter() - start
+            if tt + tt_CS > self.timeout:
                 return ["T.O."]
             if k == 0:
                 sol = self.Bellman_LP(v, s, t, Theta_k, tt)
@@ -401,20 +400,18 @@ class P_RMDP:
     def value_iteration(self, method="LP"):
         start = time.perf_counter()
         t = 0
-        tt = 0
         v_new = np.zeros(self.S)
         pi_star = np.zeros((self.S, self.A))
         Delta = 10000
         worst_param = np.zeros((self.S, self.A))
         worst_dist = np.zeros((self.S, self.A, self.S))
-        start = time.perf_counter()
         reasons = []
         theta_BS = np.zeros((self.S, self.A))
         while (
             Delta >= self.eps * (1 - self.discount) / (2 * self.discount)
         ) and t < self.t_max:
             # print("t=%s\n" %t)
-            tt += time.perf_counter() - start
+            tt = time.perf_counter() - start
             if tt > self.timeout:
                 return ["T.O."]
             if t == 0:
@@ -465,26 +462,26 @@ class P_RMDP:
                 pi_star[s] = np.array((m.getAttr("x", pi).values()))
                 del m
 
-        reward = np.array(
-            [
-                [
-                    sum(
-                        [
-                            self.probs[s, a][i, s_]
-                            * (self.rewards[s, a, s_] + self.discount * v[s_])
-                            for s_ in range(self.S)
-                        ]
-                    )
-                    for i in range(self.num_params[s])
-                ]
-                for a in range(self.A)
-            ]
-        )
-        rewards_opt = [
-            sum([pi_star[s, a] * reward[a, i] for a in range(self.A)])
-            for i in range(self.num_params[s])
-        ]
         for s in range(self.S):
+            reward = np.array(
+                [
+                    [
+                        sum(
+                            [
+                                self.probs[s, a][i, s_]
+                                * (self.rewards[s, a, s_] + self.discount * v[s_])
+                                for s_ in range(self.S)
+                            ]
+                        )
+                        for i in range(self.num_params[s])
+                    ]
+                    for a in range(self.A)
+                ]
+            )
+            rewards_opt = [
+                sum([pi_star[s, a] * reward[a, i] for a in range(self.A)])
+                for i in range(self.num_params[s])
+            ]   
             worst_ind = np.argmin(rewards_opt)
             worst_param[s] = np.array(self.Theta[s][worst_ind])
             for a in range(self.A):
