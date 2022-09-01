@@ -98,7 +98,7 @@ def test_algorithms(inp):
             )
         return
     e = time.perf_counter()
-    if _ == "T.O.":
+    if _ == np.array("T.O."):
         with open(count_file, "a") as myfile:
             myfile.write("Input %s timed out while constructing AS.\n" % ind)
             return
@@ -108,7 +108,7 @@ def test_algorithms(inp):
     s = time.perf_counter()
     _ = P_NV_MDP.compute_probs()
     e = time.perf_counter()
-    if _ == "T.O.":
+    if _ == np.array("T.O."):
         with open(count_file, "a") as myfile:
             myfile.write("Input %s timed out while computing probs.\n" % ind)
             return
@@ -121,14 +121,14 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if type(res_CS) == int:
         its_CS = res_CS
-        pi_CS, v_CS, obj_CS, theta_CS, P_CS = 5 * ["T.O."]
+        pi_CS, v_CS, obj_CS, theta_CS, P_CS = 5 * [np.array("T.O.")]
         TO_CS = True
-    elif type(res_CS) == list:
+    elif len(res_CS) == 2:
         v_CS, its_CS = res_CS
-        pi_CS, obj_CS, theta_CS, P_CS = 4 * ["T.O."]
+        pi_CS, obj_CS, theta_CS, P_CS = 4 * [np.array("T.O.")]
         TO_CS = True
     else:
-        pi_CS, v_CS, obj_CS, theta_CS, P_CS, its_CS = res_CS.values()
+        pi_CS, v_CS, obj_CS, theta_CS, P_CS, its_CS = res_CS
         TO_CS = False
     t_CS = np.round(e - s, 3)
     # print("solved with CS in %s seconds \n" %t_CS)
@@ -139,14 +139,14 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if type(res_BS) == int:
         its_BS = res_BS
-        pi_BS, v_BS, obj_BS, theta_BS, P_BS = 5 * ["T.O."]
+        pi_BS, v_BS, obj_BS, theta_BS, P_BS = 5 * [np.array("T.O.")]
         TO_BS = True
-    elif type(res_BS) == list:
+    elif len(res_BS) == 2:
         v_BS, its_BS = res_BS
-        pi_BS, obj_BS, theta_BS, P_BS = 4 * ["T.O."]
+        pi_BS, obj_BS, theta_BS, P_BS = 4 * [np.array("T.O.")]
         TO_BS = True
     else:
-        pi_BS, v_BS, obj_BS, theta_BS, P_BS, its_BS = res_BS.values()
+        pi_BS, v_BS, obj_BS, theta_BS, P_BS, its_BS = res_BS
         TO_BS = False
     t_BS = np.round(e - s, 3)
     # print("solved with BS in %s seconds \n" %t_BS)
@@ -157,14 +157,14 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if type(res_LP) == int:
         its_LP = res_LP
-        pi_LP, v_LP, obj_LP, theta_LP, P_LP = 5 * ["T.O."]
+        pi_LP, v_LP, obj_LP, theta_LP, P_LP = 5 * [np.array("T.O.")]
         TO_LP = True
-    elif type(res_LP) == list:
+    elif len(res_LP) == 2:
         v_LP, its_LP = res_LP
-        pi_LP, obj_LP, theta_LP, P_LP = 4 * ["T.O."]
+        pi_LP, obj_LP, theta_LP, P_LP = 4 * [np.array("T.O.")]
         TO_LP = True
     else:
-        pi_LP, v_LP, obj_LP, theta_LP, P_LP, its_LP = res_LP.values()
+        pi_LP, v_LP, obj_LP, theta_LP, P_LP, its_LP = res_LP
         TO_LP = False
     t_LP = np.round(e - s, 3)
     # print("solved with LP in %s seconds \n" %t_LP)
@@ -205,11 +205,11 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if type(res_proj_QP) == int:
         its_proj_QP = res_proj_QP
-        pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP = 4 * ["T.O."]
+        pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP = 4 * [np.array("T.O.")]
         TO_proj_QP = True
-    elif type(res_proj_QP) == list:
+    elif len(res_proj_QP) == 2:
         v_proj_QP, its_proj_QP = res_proj_QP
-        pi_proj_QP, obj_proj_QP, P_proj_QP = 3 * ["T.O."]
+        pi_proj_QP, obj_proj_QP, P_proj_QP = 3 * [np.array("T.O.")]
         TO_proj_QP = True
     else:
         (
@@ -218,7 +218,7 @@ def test_algorithms(inp):
             obj_proj_QP,
             P_proj_QP,
             its_proj_QP,
-        ) = res_proj_QP.values()
+        ) = res_proj_QP
         TO_proj_QP = False
     t_proj_QP = np.round(e - s, 3)
     # print("solved with proj_QP in %s seconds \n" %t_proj_QP)
@@ -229,11 +229,11 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if type(res_proj_sort) == int:
         its_proj_sort = res_proj_sort
-        pi_proj_sort, v_proj_sort, obj_proj_sort, P_proj_sort = 4 * ["T.O."]
+        pi_proj_sort, v_proj_sort, obj_proj_sort, P_proj_sort = 4 * [np.array("T.O.")]
         TO_proj_sort = True
-    elif type(res_proj_sort) == list:
+    elif len(res_proj_sort) == 2:
         v_proj_sort, its_proj_sort = res_proj_sort
-        pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * ["T.O."]
+        pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * [np.array("T.O.")]
         TO_proj_sort = True
     else:
         (
@@ -242,7 +242,7 @@ def test_algorithms(inp):
             obj_proj_sort,
             P_proj_sort,
             its_proj_sort,
-        ) = res_proj_sort.values()
+        ) = res_proj_sort
         TO_proj_sort = False
     t_proj_sort = np.round(e - s, 3)
     # print("solved with proj_sort in %s seconds \n" %t_proj_sort)
@@ -252,14 +252,15 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if type(res_QP) == int:
         its_QP = res_QP
-        pi_QP, v_QP, obj_QP, P_QP = 4 * ["T.O."]
+        pi_QP, v_QP, obj_QP, P_QP = 4 * [np.array("T.O.")]
         TO_QP = True
-    elif type(res_QP) == list:
+        #...
+    elif len(res_QP) == 2:
         v_QP, its_QP = res_QP
-        pi_QP, obj_QP, P_QP = 3 * ["T.O."]
+        pi_QP, obj_QP, P_QP = 3 * [np.array("T.O.")]
         TO_QP = True
     else:
-        pi_QP, v_QP, obj_QP, P_QP, its_QP = res_QP.values()
+        pi_QP, v_QP, obj_QP, P_QP, its_QP = res_QP
         TO_QP = False
     t_QP = np.round(e - s, 3)
     # print("solved with QP in %s seconds \n" %t_QP)
@@ -270,7 +271,7 @@ def test_algorithms(inp):
         tuple(pi_BS.flatten()),
         tuple(v_BS),
         obj_BS,
-        theta_BS,
+        tuple(theta_BS.flatten()),
         tuple(P_BS.flatten()),
         its_BS,
         t_BS,
@@ -278,7 +279,7 @@ def test_algorithms(inp):
         tuple(pi_CS.flatten()),
         tuple(v_CS),
         obj_CS,
-        theta_CS,
+        tuple(theta_CS.flatten()),
         tuple(P_CS.flatten()),
         its_CS,
         t_CS,
@@ -286,7 +287,7 @@ def test_algorithms(inp):
         tuple(pi_LP.flatten()),
         tuple(v_LP),
         obj_LP,
-        theta_LP,
+        tuple(theta_LP.flatten()),
         tuple(P_LP.flatten()),
         its_LP,
         t_LP,
@@ -435,8 +436,8 @@ names = [
 
 test_full = inputs
 q_ind = int(sys.argv[1]) - 1
-results_file = "inf_NV_results.txt"
-count_file = "inf_NV_count.txt"
+results_file = "results_inf_NV.txt"
+count_file = "count_inf_NV.txt"
 
 continuing = False
 

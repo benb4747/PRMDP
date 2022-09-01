@@ -74,7 +74,7 @@ class P_RMDP:
                         (th * (1 - th) * chi2.ppf(1 - self.alpha, self.A))
                         / (self.N * (self.S - 1))
                     ),
-                    1,
+                    1
                 )
                 lb = max(
                     th
@@ -82,7 +82,7 @@ class P_RMDP:
                         (th * (1 - th) * chi2.ppf(1 - self.alpha, self.A))
                         / (self.N * (self.S - 1))
                     ),
-                    0,
+                    0
                 )
                 ranges[s, a] = np.arange(lb, ub + gap, gap)
 
@@ -100,6 +100,7 @@ class P_RMDP:
                     for theta in theta_base[s]
                     if binom_conf_val(self.A, self.S - 1, self.N, theta, self.MLE[s])
                     <= chi2.ppf(1 - self.alpha, self.A)
+                    and max(theta) <= 1 and min(theta) >= 0
                 ]
                 if tuple(self.MLE[s]) not in Theta_s:
                     Theta_s.append(tuple(self.MLE[s]))
@@ -415,7 +416,7 @@ class P_RMDP:
             # print("t=%s\n" %t)
             tt += time.perf_counter() - start
             if tt > self.timeout:
-                return "T.O."
+                return ["T.O."]
             if t == 0:
                 Delta = 0
             v = v_new.copy()
@@ -457,10 +458,10 @@ class P_RMDP:
 
         if method == "BS":
             for s in range(self.S):
-                sol = self.Bellman_CS(v, s, t, tt)
+                sol = self.Bellman_CS(v_new, s, t, tt)
                 if len(sol) == 1:
                     return [v_new, t]  # timeout
-                m, pi = self.Bellman_CS(v, s, t, tt)
+                m, pi = sol
                 pi_star[s] = np.array((m.getAttr("x", pi).values()))
                 del m
 
@@ -501,11 +502,11 @@ class P_RMDP:
         # print("Finished value iteration in %s secs and t=%s iterations."%(self.tt_opt, t))
         # print("Final values: ", v_new)
 
-        return {
-            "Policy": pi_star,
-            "Values": v_new,
-            "Objective": obj,
-            "Worst param": worst_param,
-            "Worst dist": worst_dist,
-            "Nits": t,
-        }
+        return [
+            np.round(pi_star, 4),
+            np.round(v_new, 4),
+            np.round(obj, 4),
+            np.round(worst_param, 4), 
+            np.round(worst_dist, 4), 
+            t
+        ]

@@ -328,6 +328,9 @@ class NP_RMDP:
                 for a in range(self.A):
                     b = np.array(self.rewards[s, a]) + self.discount * np.array(v)
                     # print("b = ", b, "theta = ", theta)
+                    res = self.solve_projection(s, b, a, theta, delta, tt, method)
+                    if res[0] == "T.O.":
+                        return res
                     d_bar[a] = self.solve_projection(s, b, a, theta, delta, tt, method)
                 # print(d_bar)
                 if sum(d_bar[:, 1]) <= self.kappa:
@@ -401,13 +404,13 @@ class NP_RMDP:
 
         obj = np.matmul(np.array(self.P_0), np.array(v_new))
 
-        return {
-            "Policy": np.round(pi_star, 4),
-            "Values": np.round(v_new, 4),
-            "Objective": np.round(obj, 4),
-            "Worst": np.round(worst, 4),
-            "Nits": t,
-        }
+        return [
+            np.round(pi_star, 4),
+            np.round(v_new, 4),
+            np.round(obj, 4),
+            np.round(worst, 4),
+            t
+        ]
 
     def find_policy(self, s, v, tt):
         start = time.perf_counter()
@@ -494,11 +497,14 @@ class NP_RMDP:
             worst = np.zeros((self.A, self.S))
 
             for (a, s_) in it.product(range(self.A), range(self.S)):
-                y[a, s_] = (nu_star[a] - pi_star[a] * b[a, s_]) / eta_star
-                if self.distance == "KLD":
-                    worst[a, s_] = self.P_hat[s, a, s_] * exp(y[a, s_])
-                elif self.distance == "mchisq":
-                    worst[a, s_] = self.P_hat[s, a, s_] * max(1 + y[a, s_] / 2, 0)
+                if max(self.P_hat[s, a]) == 1:
+                    worst[a] = self.P_hat[s, a]
+                else:
+                    y[a, s_] = (nu_star[a] - pi_star[a] * b[a, s_]) / eta_star
+                    if self.distance == "KLD":
+                        worst[a, s_] = self.P_hat[s, a, s_] * exp(y[a, s_])
+                    elif self.distance == "mchisq":
+                        worst[a, s_] = self.P_hat[s, a, s_] * max(1 + y[a, s_] / 2, 0)
             obj = m.ObjVal
             del m
             return pi_star, worst, obj
