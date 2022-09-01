@@ -32,6 +32,10 @@ def test_algorithms(inp):
         timeout,
         solver_cores,
     ) = inp
+    with open(start_file, "a") as myfile:
+        myfile.write(
+            "Starting input %s.\n" % ind
+        )
     headers = list(inp)
     S = C + 1
     A = C + 1
@@ -103,6 +107,7 @@ def test_algorithms(inp):
             myfile.write("Input %s timed out while constructing AS.\n" % ind)
             return
     t_AS = np.round(e - s, 3)
+    left = timeout - t_AS
     headers.append(tuple(P_NV_MDP.num_params))
     # print("number of params: %s" %P_NV_MDP.num_params)
     s = time.perf_counter()
@@ -338,7 +343,7 @@ cores = 32
 loop_cores = 8
 solver_cores = int(cores / loop_cores)
 
-q_vals = [10, 25, 50]
+q_vals = [10, 25]
 h_vals = [10, 25, 50]
 c_vals = [10, 25, 50]
 b_vals = [10, 25, 50]
@@ -351,7 +356,7 @@ t_max = 1000
 eps = 1e-6
 
 alpha = 0.05
-gap_vals = [0.1, 0.01, 0.001]
+gap_vals = [0.20, 0.10, 0.05]
 N_vals = [10, 50]
 
 timeout = 4 * 60 * 60
@@ -439,6 +444,7 @@ names = [
 
 test_full = inputs
 h_ind = int(sys.argv[1]) - 1
+start_file = "start_inf_NV.txt"
 results_file = "results_inf_NV.txt"
 count_file = "count_inf_NV.txt"
 
@@ -477,7 +483,7 @@ if continuing:
 
     done = list(df.ind) + failed + timed_out
 
-    not_done = [i for i in test_full if (i[0], i[1]) not in done]
+    not_done = [i for i in test_full if i[0] not in done]
 
     test = not_done
 else:
