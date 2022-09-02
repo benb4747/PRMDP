@@ -398,10 +398,10 @@ class NP_RMDP:
                 if len(sol) == 1:
                     return ["T.O."]
                 v_new[s], alpha[s] = sol
-            Delta = max(np.array(v_new) - np.array(v))
+            Delta = max(abs(np.array(v_new) - np.array(v)))
             t += 1
-            print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
-                "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
+            # print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
+            #   "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
         self.values = v_new
 
         for s in range(self.S):
@@ -434,12 +434,15 @@ class NP_RMDP:
         pi = m.addVars(range(self.A), vtype=GRB.CONTINUOUS, name="pi")
         nu = m.addVars(range(self.A), name="nu", lb=-GRB.INFINITY)
         eta = m.addVar(name="eta")
-        z = m.addVars(
-            [(a, s_) for a in range(self.A) for s_ in range(self.S)], lb=0, name="z"
-        )
-        x = m.addVars(
-            [(a, s_) for a in range(self.A) for s_ in range(self.S)], lb=0, name="x"
-        )
+        keys = [
+            (a, s_)
+            for a in range(self.A)
+            for s_ in range(self.S)
+            if self.P_hat[s, a, s_] > 0
+        ]
+        z = m.addVars(keys, lb=0, name="z")
+        # print(z, z.keys)
+        x = m.addVars(keys, lb=0, name="x")
         b = np.zeros((self.A, self.S))
         keys = x.keys()
         for (a, s_) in keys:

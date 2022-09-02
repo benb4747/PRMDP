@@ -223,11 +223,10 @@ class P_RMDP:
                 intervals.append((theta - root_gap, theta))
 
         roots = []
-        if self.dist == "binomial":
-            delta_ = np.sqrt(
-                delta * self.MLE[s, a] * (1 - self.MLE[s, a]) / (self.N * (self.S - 1))
-            )
-        # print("Running bisection for proj, state ", s, "action ", a)
+        # if self.dist == "binomial":
+        #    delta_ = np.sqrt(
+        #        delta * self.MLE[s, a] * (1 - self.MLE[s, a]) / (self.N * (self.S - 1))
+        #    )
         for run in range(len(intervals)):
             if time.perf_counter() - start > left:
                 return ["T.O."]
@@ -236,9 +235,10 @@ class P_RMDP:
             l, u = intervals[run]
             while condition:
                 x = (l + u) / 2
+                objs = [self.projection_obj(sol, s, b, a) for sol in [l, u]]
                 if self.dist == "binomial":
                     P = np.array(binom_probs_fast(self.S, self.A, s, a, x))
-                if sum(P * b) <= beta and u - l <= delta_:
+                if sum(P * b) <= beta and max(objs) - min(objs) <= delta:
                     condition = False
                 elif sum(P * b) < beta:
                     l = x
@@ -452,8 +452,8 @@ class P_RMDP:
                 v_new[s] = obj
 
                 Delta = max(np.array(v_new) - np.array(v))
-            #print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
-             #     "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
+            # print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
+            #     "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
             t += 1
 
         if method == "BS":
