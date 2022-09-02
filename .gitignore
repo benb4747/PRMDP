@@ -1,3 +1,6 @@
 *.ipynb
 src/__pycache__/*
 *.txt
+*.lp
+*.mps
+*.lp

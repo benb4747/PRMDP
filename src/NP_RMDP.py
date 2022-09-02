@@ -427,6 +427,7 @@ class NP_RMDP:
         env.setParam("OutputFlag", 0)
         env.setParam("Presolve", 1)
         env.setParam("LogToConsole", 0)
+        #env.setParam("NumericFocus", 3)
         env.setParam("Threads", self.solver_cores)
         m = gp.Model(env=env)
         enable_print()
@@ -471,6 +472,7 @@ class NP_RMDP:
             m.addConstrs(
                 z[a, s_] >= nu[a] - pi[a] * b[a, s_] + 2 * eta for (a, s_) in keys
             )
+
             x1 = m.addVars(keys, lb=-GRB.INFINITY, name="x1")
             x2 = m.addVars(keys, lb=-GRB.INFINITY, name="x2")
             x2_abs = m.addVars(keys, lb=0, name="x2_abs")
