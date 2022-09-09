@@ -25,13 +25,13 @@ class P_RMDP:
         P_0,
         dist,
         t_max,
-        eps,
+        VI_tol,
+        BS_tol,
         theta_0,
         theta_hat,
         alpha,
         gap,
         N,
-        tol,
         kappa,
         P_hat,
         timeout,
@@ -47,10 +47,10 @@ class P_RMDP:
         self.alpha = alpha
         self.dist = dist
         self.t_max = t_max
-        self.eps = eps
+        self.VI_tol = VI_tol
+        self.BS_tol = BS_tol
         self.gap = gap
         self.N = N
-        self.tol = tol
         self.kappa = kappa
         self.P_hat = P_hat
 
@@ -87,9 +87,12 @@ class P_RMDP:
                 ranges[s, a] = np.arange(lb, ub + gap, gap)
 
             theta_base = [
-                it.product(*[ranges[s, a] for a in range(self.A)])
+                list(it.product(*[ranges[s, a] for a in range(self.A)]))
                 for s in range(self.S)
             ]
+            now = time.perf_counter()
+            if now - start > self.timeout:
+                return "T.O."
             Theta = np.zeros(self.S, dtype="object")
             kappa = chi2.ppf(1 - self.alpha, self.A)
             for s in range(self.S):
@@ -97,7 +100,7 @@ class P_RMDP:
                 if now - start > self.timeout:
                     return "T.O."
                 Theta_s = compute_conf_set(
-                    np.array(list(theta_base[s])),
+                    np.array(theta_base[s]),
                     self.A,
                     self.S - 1,
                     self.N,
@@ -136,8 +139,8 @@ class P_RMDP:
         block_print()
         env = gp.Env()
         env.setParam("OutputFlag", 0)
-        env.setParam("Presolve", 1)
         env.setParam("LogToConsole", 0)
+        env.setParam("MIPGapAbs", self.BS_tol)
         env.setParam("Threads", self.solver_cores)
         m = gp.Model(env=env)
         enable_print()
@@ -193,70 +196,81 @@ class P_RMDP:
             self.MLE[s, a] * (1 - self.MLE[s, a])
         )
 
-    def solve_projection(self, s, b, a, beta, delta, tt, root_gap=0.01, beta_tol=1e-6):
+    def solve_projection(self, s, b, a, beta, delta, tt, root_gap=0.01):
         start = time.perf_counter()
         left = self.timeout - tt
         if sum(self.P_hat[s, a] * b) <= beta:
             return [self.MLE[s, a], 0]
-        l, u = 0, 1
         # find root intervals
         if self.dist == "binomial":
             theta_min = 0
             theta_max = 1
-        theta = self.MLE[s, a]
-        EV = beta
         intervals = []
         for run in range(2):
-            if time.perf_counter() - start > left:
-                return "T.O."
-            while EV >= beta:
-                if theta <= theta_min or theta >= theta_max:
-                    continue
-                if run == 0:
-                    theta -= root_gap
-                else:
-                    theta += root_gap
-                EV = sum(np.array(binom_probs_fast(self.S, self.A, s, a, theta)) * b)
-            if run == 0:
-                intervals.append((theta, theta + root_gap))
-            else:
-                intervals.append((theta - root_gap, theta))
-
-        roots = []
-        # if self.dist == "binomial":
-        #    delta_ = np.sqrt(
-        #        delta * self.MLE[s, a] * (1 - self.MLE[s, a]) / (self.N * (self.S - 1))
-        #    )
-        for run in range(len(intervals)):
+            theta = self.MLE[s, a]
+            EV = beta
             if time.perf_counter() - start > left:
                 return ["T.O."]
-            # print("Running beta part of run ", run)
+            while EV >= beta:
+                EV_old = EV
+                if run == 0:
+                    theta = max(theta - root_gap, theta_min)
+                else:
+                    theta = min(theta + root_gap, theta_max)
+                EV = sum(np.array(binom_probs_fast(self.S, self.A, s, a, theta)) * b)
+                if theta == theta_min or theta == theta_max:
+                    break
+            if EV < beta:
+                if run == 0:
+                    intervals.append((run, theta, theta + root_gap))
+                else:
+                    intervals.append((run, theta - root_gap, theta))
+        if intervals == []:
+            return [False, False]
+        roots = []
+        for run in range(len(intervals)):
             condition = True
-            l, u = intervals[run]
+            r, l, u = intervals[run]
             while condition:
+                if time.perf_counter() - start > left:
+                    return ["T.O."]
                 x = (l + u) / 2
                 objs = [self.projection_obj(sol, s, b, a) for sol in [l, u]]
                 if self.dist == "binomial":
                     P = np.array(binom_probs_fast(self.S, self.A, s, a, x))
-                if sum(P * b) <= beta and max(objs) - min(objs) <= delta:
+                if max(objs) - min(objs) <= delta:
                     condition = False
-                elif sum(P * b) < beta:
-                    l = x
+                    continue
+                if r == 0:
+                    if sum(P * b) <= beta:
+                        l = x
+                    else:
+                        u = x
                 else:
-                    u = x
+                    if sum(P * b) <= beta:
+                        u = x
+                    else:
+                        l = x
             roots.append((l, u))
 
         objs = [self.projection_obj((u + l) / 2, s, b, a) for (l, u) in roots]
         l, u = roots[np.argmin(objs)]
         opt = (l + u) / 2
-        objs_opt = [self.projection_obj(sol, s, b, a) for sol in [l, u]]
+
+        EV_l = sum(np.array(binom_probs_fast(self.S, self.A, s, a, l)) * b)
+        EV_u = sum(np.array(binom_probs_fast(self.S, self.A, s, a, u)) * b)
+        if EV_l <= beta:
+            objs_opt = [self.projection_obj(sol, s, b, a) for sol in [l, (u + l) / 2]]
+        elif EV_u <= beta:
+            objs_opt = [self.projection_obj(sol, s, b, a) for sol in [u, (u + l) / 2]]
+
         return opt, np.array([min(objs_opt), max(objs_opt)])
 
     def Bellman_BS(self, v, s, t, tt):
         # print("---- Bellman update step t = %s for s = %s----\n" %(t,s))
         start = time.perf_counter()
         R_bar = np.max(self.rewards) / (1 - self.discount)
-        delta = self.tol * self.kappa / (2 * self.A * R_bar + self.A * self.tol)
+        delta = self.BS_tol * self.kappa / (2 * self.A * R_bar + self.A * self.BS_tol)
         l = max(
             [
                 min(
@@ -272,6 +286,8 @@ class P_RMDP:
         conf = np.zeros((self.A, 2))
         condition = True
         while condition:
+            if time.perf_counter() - start + tt > self.timeout:
+                return ["T.O."]
             # print("l = ", l, ", u = ", u, "\n")
             x = (l + u) / 2
             theta_BS = np.zeros(self.A)
@@ -281,7 +297,11 @@ class P_RMDP:
                 sol = self.solve_projection(s, b, a, x, delta, tt)
                 if sol[0] == "T.O.":
                     return ["T.O."]
-                theta_BS[a], conf[a] = sol
+                elif sol[0] == False:
+                    theta_BS[a] = 0
+                    conf[a] = np.array([self.kappa + 1, self.kappa + 1])
+                else:
+                    theta_BS[a], conf[a] = sol
             # print(d_bar)
 
             if sum(conf[:, 1]) <= self.kappa:
@@ -289,7 +309,7 @@ class P_RMDP:
             elif sum(conf[:, 0]) > self.kappa:
                 l = x
 
-            if (u - l <= self.tol) or (
+            if (u - l <= self.BS_tol) or (
                 self.kappa < sum(conf[:, 1]) and self.kappa >= sum(conf[:, 0])
             ):
                 condition = False
@@ -410,13 +430,14 @@ class P_RMDP:
         worst_dist = np.zeros((self.S, self.A, self.S))
         reasons = []
         theta_BS = np.zeros((self.S, self.A))
+        s_VI = time.perf_counter()
         while (
-            Delta >= self.eps * (1 - self.discount) / (2 * self.discount)
+            Delta >= self.VI_tol * (1 - self.discount) / (2 * self.discount)
         ) and t < self.t_max:
             # print("t=%s\n" %t)
             tt = time.perf_counter() - start
             if tt > self.timeout:
-                return ["T.O."]
+                return [v_new, t, tt]
             if t == 0:
                 Delta = 0
             v = v_new.copy()
@@ -425,7 +446,8 @@ class P_RMDP:
                 if method == "LP":
                     sol = self.Bellman_LP(v, s, t, AS, tt)
                     if len(sol) == 1:
-                        return t  # timeout
+                        tt = time.perf_counter() - start
+                        return [v_new, t, tt]  # timeout
                     m, dv, dummy, reward = sol
 
                     obj = m.ObjVal
@@ -433,14 +455,16 @@ class P_RMDP:
                 elif method == "CS":
                     sol = self.Bellman_CS(v, s, t, tt)
                     if len(sol) == 1:
-                        return t  # timeout
+                        tt = time.perf_counter() - start
+                        return [v_new, t, tt] # timeout
                     m, dv = sol
                     obj = m.ObjVal
 
                 elif method == "BS":
                     sol = self.Bellman_BS(v, s, t, tt)
                     if len(sol) == 1:
-                        return t  # timeout
+                        tt = time.perf_counter() - start
+                        return [v_new, t, tt]  # timeout
                     obj, theta = sol
                     theta_BS[s] = theta
 
@@ -453,14 +477,15 @@ class P_RMDP:
 
                 Delta = max(np.array(v_new) - np.array(v))
             # print("ITER: ", t, "VALUES: ", v_new, "Delta: ", Delta,
-            #     "Stopping: ", self.eps * (1 - self.discount) / (2 * self.discount))
+            #     "Stopping: ", self.VI_tol * (1 - self.discount) / (2 * self.discount))
             t += 1
-
+        t_VI = time.perf_counter() - start
         if method == "BS":
             for s in range(self.S):
                 sol = self.Bellman_CS(v_new, s, t, tt)
                 if len(sol) == 1:
-                    return [v_new, t]  # timeout
+                    tt = time.perf_counter() - start
+                    return [v_new, t, tt]  # timeout
                 m, pi = sol
                 pi_star[s] = np.array((m.getAttr("x", pi).values()))
                 del m
@@ -509,4 +534,5 @@ class P_RMDP:
             np.round(worst_param, 4),
             np.round(worst_dist, 4),
             t,
+            np.round(t_VI, 4),
         ]

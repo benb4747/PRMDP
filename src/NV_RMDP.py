@@ -24,11 +24,11 @@ class NV_RMDP:
         P_0,
         dist,
         t_max,
-        eps,
+        VI_tol,
+        BS_tol,
         P_hat,
         distance,
         kappa,
-        tol,
         theta_0,
         theta_hat,
         alpha,
@@ -48,11 +48,11 @@ class NV_RMDP:
         self.P_0 = P_0
         self.dist = dist
         self.t_max = t_max
-        self.eps = eps
+        self.VI_tol = VI_tol
+        self.BS_tol = BS_tol
 
         self.distance = distance
         self.kappa = kappa
-        self.tol = tol
         self.P_hat = P_hat
 
         self.S = C + 1
@@ -91,13 +91,13 @@ class NV_RMDP:
                 self.P_0,
                 self.dist,
                 self.t_max,
-                self.eps,
+                self.VI_tol,
+                self.BS_tol,
                 self.theta_0,
                 self.MLE,
                 self.alpha,
                 self.gap,
                 self.N,
-                self.tol,
                 self.kappa,
                 self.P_hat,
                 self.timeout,
@@ -114,8 +114,8 @@ class NV_RMDP:
                 self.distance,
                 self.kappa,
                 self.t_max,
-                self.eps,
-                self.tol,
+                self.VI_tol,
+                self.BS_tol,
                 self.timeout,
                 self.solver_cores,
             )

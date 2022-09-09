@@ -74,10 +74,10 @@ def test_algorithms(inp):
         dist,
         t_max,
         eps,
+        eps / 10,
         P_hat,
         "mchisq",
         chi2.ppf(1 - alpha, A),
-        eps * (1 - discount) / (2 * discount),
         p_0,
         MLE,
         alpha,
@@ -120,54 +120,42 @@ def test_algorithms(inp):
     # Solve
     ## CS
     s = time.perf_counter()
-    res_CS = P_NV_MDP.value_iteration("CS")
+    res_CS = P_NV_MDP.value_iteration(method="CS")
     e = time.perf_counter()
-    if type(res_CS) == int:
-        its_CS = res_CS
-        pi_CS, v_CS, obj_CS, theta_CS, P_CS = 5 * [np.array("T.O.")]
-        TO_CS = True
-    elif len(res_CS) == 2:
-        v_CS, its_CS = res_CS
+    if len(res_CS) == 2:
+        v_CS, its_CS, t_VI_CS = res_CS
         pi_CS, obj_CS, theta_CS, P_CS = 4 * [np.array("T.O.")]
         TO_CS = True
     else:
-        pi_CS, v_CS, obj_CS, theta_CS, P_CS, its_CS = res_CS
+        pi_CS, v_CS, obj_CS, theta_CS, P_CS, its_CS, t_VI_CS = res_CS
         TO_CS = False
     t_CS = np.round(e - s, 3)
     # print("solved with CS in %s seconds \n" %t_CS)
 
     ## BS
     s = time.perf_counter()
-    res_BS = P_NV_MDP.value_iteration("BS")
+    res_BS = P_NV_MDP.value_iteration(method="BS")
     e = time.perf_counter()
-    if type(res_BS) == int:
-        its_BS = res_BS
-        pi_BS, v_BS, obj_BS, theta_BS, P_BS = 5 * [np.array("T.O.")]
-        TO_BS = True
-    elif len(res_BS) == 2:
-        v_BS, its_BS = res_BS
+    if len(res_BS) == 2:
+        v_BS, its_BS, t_VI_BS = res_BS
         pi_BS, obj_BS, theta_BS, P_BS = 4 * [np.array("T.O.")]
         TO_BS = True
     else:
-        pi_BS, v_BS, obj_BS, theta_BS, P_BS, its_BS = res_BS
+        pi_BS, v_BS, obj_BS, theta_BS, P_BS, its_BS, t_VI_BS = res_BS
         TO_BS = False
     t_BS = np.round(e - s, 3)
     # print("solved with BS in %s seconds \n" %t_BS)
 
     ## LP
     s = time.perf_counter()
-    res_LP = P_NV_MDP.value_iteration("LP")
+    res_LP = P_NV_MDP.value_iteration(method="LP")
     e = time.perf_counter()
-    if type(res_LP) == int:
-        its_LP = res_LP
-        pi_LP, v_LP, obj_LP, theta_LP, P_LP = 5 * [np.array("T.O.")]
-        TO_LP = True
-    elif len(res_LP) == 2:
-        v_LP, its_LP = res_LP
+    if len(res_LP) == 3:
+        v_LP, its_LP, t_VI_LP = res_LP
         pi_LP, obj_LP, theta_LP, P_LP = 4 * [np.array("T.O.")]
         TO_LP = True
     else:
-        pi_LP, v_LP, obj_LP, theta_LP, P_LP, its_LP = res_LP
+        pi_LP, v_LP, obj_LP, theta_LP, P_LP, its_LP, t_VI_LP = res_LP
         TO_LP = False
     t_LP = np.round(e - s, 3)
     # print("solved with LP in %s seconds \n" %t_LP)
@@ -185,10 +173,10 @@ def test_algorithms(inp):
         dist,
         t_max,
         eps,
+        eps / 10,
         P_hat,
         "mchisq",
         chi2.ppf(1 - alpha, A) / N,
-        eps * (1 - discount) / (2 * discount),
         p_0,
         MLE,
         alpha,
@@ -204,7 +192,7 @@ def test_algorithms(inp):
     # Solve
     """## Projection algorithm where proj is solved as a QP
     s = time.perf_counter()
-    res_proj_QP = NV_MDP.value_iteration("proj_qp")
+    res_proj_QP = NV_MDP.value_iteration(method="proj_qp")
     e = time.perf_counter()
     if type(res_proj_QP) == int:
         its_proj_QP = res_proj_QP
@@ -228,14 +216,10 @@ def test_algorithms(inp):
 
     ## Projection solved by sort algorithm
     s = time.perf_counter()
-    res_proj_sort = NV_MDP.value_iteration("proj_sort")
+    res_proj_sort = NV_MDP.value_iteration(method="proj_sort")
     e = time.perf_counter()
-    if type(res_proj_sort) == int:
-        its_proj_sort = res_proj_sort
-        pi_proj_sort, v_proj_sort, obj_proj_sort, P_proj_sort = 4 * [np.array("T.O.")]
-        TO_proj_sort = True
-    elif len(res_proj_sort) == 2:
-        v_proj_sort, its_proj_sort = res_proj_sort
+    if len(res_proj_sort) == 3:
+        v_proj_sort, its_proj_sort, t_VI_proj_sort = res_proj_sort
         pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * [np.array("T.O.")]
         TO_proj_sort = True
     else:
@@ -245,25 +229,21 @@ def test_algorithms(inp):
             obj_proj_sort,
             P_proj_sort,
             its_proj_sort,
+            t_VI_proj_sort
         ) = res_proj_sort
         TO_proj_sort = False
     t_proj_sort = np.round(e - s, 3)
     # print("solved with proj_sort in %s seconds \n" %t_proj_sort)
 
     s = time.perf_counter()
-    res_QP = NV_MDP.value_iteration("QP")
+    res_QP = NV_MDP.value_iteration(method="QP")
     e = time.perf_counter()
-    if type(res_QP) == int:
-        its_QP = res_QP
-        pi_QP, v_QP, obj_QP, P_QP = 4 * [np.array("T.O.")]
-        TO_QP = True
-        # ...
-    elif len(res_QP) == 2:
-        v_QP, its_QP = res_QP
+    if len(res_QP) == 3:
+        v_QP, its_QP, t_VI_QP = res_QP
         pi_QP, obj_QP, P_QP = 3 * [np.array("T.O.")]
         TO_QP = True
     else:
-        pi_QP, v_QP, obj_QP, P_QP, its_QP = res_QP
+        pi_QP, v_QP, obj_QP, P_QP, its_QP, t_VI_QP = res_QP
         TO_QP = False
     t_QP = np.round(e - s, 3)
     # print("solved with QP in %s seconds \n" %t_QP)
@@ -332,7 +312,7 @@ def test_algorithms_mp(inp):
     try:
         return test_algorithms(inp)
     except Exception:
-        with open(results_file, "a") as res_file:
+        with open(count_file, "a") as res_file:
             res_file.write("Input %s failed.\n" % ind)
         logging.exception("Input %s failed.\n" % ind)
 
@@ -346,7 +326,7 @@ h_vals = [10, 25, 50]
 c_vals = [10, 25, 50]
 b_vals = [10, 25, 50]
 
-C_vals = [1, 3, 5]  # inventory capacity, to ensure finite state space
+C_vals = [1, 2, 3]  # inventory capacity, to ensure finite state space
 discount = 0.5
 
 dist = "binomial"
@@ -369,6 +349,19 @@ inputs = [
     for N in N_vals
     if c > q
 ]
+
+inputs = inputs + [
+    (q, h, c, b, C, discount, dist, t_max, eps, alpha, gap, N, timeout, solver_cores)
+    for q in q_vals
+    for h in h_vals
+    for c in c_vals
+    for b in b_vals
+    for C in [10, 15, 20]
+    for gap in gap_vals
+    for N in N_vals
+    if c > q
+]
+
 for i in inputs:
     inputs[inputs.index(i)] = tuple([inputs.index(i)] + list(i))
 
@@ -446,7 +439,7 @@ start_file = "start_inf_NV.txt"
 results_file = "results_inf_NV.txt"
 count_file = "count_inf_NV.txt"
 
-continuing = False
+continuing = True
 
 if continuing:
     file1 = open(results_file, "r")
@@ -463,11 +456,6 @@ if continuing:
 
     res_array = np.array(lines_new)
     df = pd.DataFrame(data=res_array, columns=names)
-    # no_TO = df[(df.PWL_TO == 0) & (df.CS_TO == 0)]
-
-    # done_twice = [(i, r) for (i, r) in list(zip(df.ind, df.rep))
-    #             if df[(df.ind == i) & (df.rep == r)].shape[0] == 2]
-
     file1 = open(count_file, "r")
     lines = file1.readlines()
     file1.close()
@@ -505,6 +493,7 @@ if h_ind == 0 and not continuing:
         myfile.write(str(names) + "\n")
 
 test = [i for i in test if i[2] == h_vals[h_ind]]
+# test = [i for i in test if i[0] == 242]
 
 if __name__ == "__main__":
     with Pool(processes=loop_cores) as p:
