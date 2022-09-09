@@ -508,7 +508,7 @@ class NP_RMDP:
 
         m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() - start)
         m.setObjective(Obj, GRB.MAXIMIZE)
-        #m.write("model_%s.lp" % s)
+        # m.write("model_%s.lp" % s)
         m.optimize()
         if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
             pi_star = np.array(m.getAttr("x", pi).values())

@@ -122,12 +122,22 @@ def test_algorithms(inp):
     s = time.perf_counter()
     res_CS = P_NV_MDP.value_iteration(method="CS")
     e = time.perf_counter()
-    if len(res_CS) == 2:
+    if len(res_CS) == 3:
         v_CS, its_CS, t_VI_CS = res_CS
-        pi_CS, obj_CS, theta_CS, P_CS = 4 * [np.array("T.O.")]
+        pi_CS, obj_CS, theta_CS, P_CS = 4 * [-1]
         TO_CS = True
+    elif res_CS[0] == "inf_unbd":
+        with open(count_file, "a") as myfile:
+            myfile.write("Input %s had an unbounded/inf model.\n" % ind)
+            return
     else:
         pi_CS, v_CS, obj_CS, theta_CS, P_CS, its_CS, t_VI_CS = res_CS
+        pi_CS, v_CS, P_CS, theta_CS = [
+            tuple(pi_CS.flatten()),
+            tuple(v_CS.flatten()),
+            tuple(P_CS.flatten()),
+            tuple(theta_CS.flatten()),
+        ]
         TO_CS = False
     t_CS = np.round(e - s, 3)
     # print("solved with CS in %s seconds \n" %t_CS)
@@ -136,12 +146,18 @@ def test_algorithms(inp):
     s = time.perf_counter()
     res_BS = P_NV_MDP.value_iteration(method="BS")
     e = time.perf_counter()
-    if len(res_BS) == 2:
+    if len(res_BS) == 3:
         v_BS, its_BS, t_VI_BS = res_BS
-        pi_BS, obj_BS, theta_BS, P_BS = 4 * [np.array("T.O.")]
+        pi_BS, obj_BS, theta_BS, P_BS = 4 * [-1]
         TO_BS = True
     else:
         pi_BS, v_BS, obj_BS, theta_BS, P_BS, its_BS, t_VI_BS = res_BS
+        pi_BS, v_BS, P_BS, theta_BS = [
+            tuple(pi_BS.flatten()),
+            tuple(v_BS.flatten()),
+            tuple(P_BS.flatten()),
+            tuple(theta_BS.flatten()),
+        ]
         TO_BS = False
     t_BS = np.round(e - s, 3)
     # print("solved with BS in %s seconds \n" %t_BS)
@@ -152,10 +168,20 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_LP) == 3:
         v_LP, its_LP, t_VI_LP = res_LP
-        pi_LP, obj_LP, theta_LP, P_LP = 4 * [np.array("T.O.")]
+        pi_LP, obj_LP, theta_LP, P_LP = 4 * [-1]
         TO_LP = True
+    elif res_LP[0] == ["inf_unbd"]:
+        with open(count_file, "a") as myfile:
+            myfile.write("Input %s had an unbounded/inf model.\n" % ind)
+            return
     else:
         pi_LP, v_LP, obj_LP, theta_LP, P_LP, its_LP, t_VI_LP = res_LP
+        pi_LP, v_LP, P_LP, theta_LP = [
+            tuple(pi_LP.flatten()),
+            tuple(v_LP.flatten()),
+            tuple(P_LP.flatten()),
+            tuple(theta_LP.flatten()),
+        ]
         TO_LP = False
     t_LP = np.round(e - s, 3)
     # print("solved with LP in %s seconds \n" %t_LP)
@@ -196,11 +222,11 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if type(res_proj_QP) == int:
         its_proj_QP = res_proj_QP
-        pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP = 4 * [np.array("T.O.")]
+        pi_proj_QP, v_proj_QP, obj_proj_QP, P_proj_QP = 4 * [-1]
         TO_proj_QP = True
     elif len(res_proj_QP) == 2:
         v_proj_QP, its_proj_QP = res_proj_QP
-        pi_proj_QP, obj_proj_QP, P_proj_QP = 3 * [np.array("T.O.")]
+        pi_proj_QP, obj_proj_QP, P_proj_QP = 3 * [-1]
         TO_proj_QP = True
     else:
         (
@@ -220,7 +246,7 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_proj_sort) == 3:
         v_proj_sort, its_proj_sort, t_VI_proj_sort = res_proj_sort
-        pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * [np.array("T.O.")]
+        pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * [-1]
         TO_proj_sort = True
     else:
         (
@@ -229,8 +255,13 @@ def test_algorithms(inp):
             obj_proj_sort,
             P_proj_sort,
             its_proj_sort,
-            t_VI_proj_sort
+            t_VI_proj_sort,
         ) = res_proj_sort
+        pi_proj_sort, v_proj_sort, P_proj_sort = (
+            tuple(pi_proj_sort.flatten()),
+            tuple(v_proj_sort.flatten()),
+            tuple(P_proj_sort.flatten()),
+        )
         TO_proj_sort = False
     t_proj_sort = np.round(e - s, 3)
     # print("solved with proj_sort in %s seconds \n" %t_proj_sort)
@@ -240,10 +271,15 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_QP) == 3:
         v_QP, its_QP, t_VI_QP = res_QP
-        pi_QP, obj_QP, P_QP = 3 * [np.array("T.O.")]
+        pi_QP, obj_QP, P_QP = 3 * [-1]
         TO_QP = True
     else:
         pi_QP, v_QP, obj_QP, P_QP, its_QP, t_VI_QP = res_QP
+        pi_QP, v_QP, P_QP = (
+            tuple(pi_QP.flatten()),
+            tuple(v_QP.flatten()),
+            tuple(P_QP.flatten()),
+        )
         TO_QP = False
     t_QP = np.round(e - s, 3)
     # print("solved with QP in %s seconds \n" %t_QP)
@@ -251,43 +287,48 @@ def test_algorithms(inp):
     res_list = headers + [
         t_AS,
         t_probs,
-        tuple(pi_BS.flatten()),
-        tuple(v_BS),
+        pi_BS,
+        v_BS,
         obj_BS,
-        tuple(theta_BS.flatten()),
-        tuple(P_BS.flatten()),
+        theta_BS,
+        P_BS,
         its_BS,
         t_BS,
+        t_VI_BS,
         TO_BS,
-        tuple(pi_CS.flatten()),
-        tuple(v_CS),
+        pi_CS,
+        v_CS,
         obj_CS,
-        tuple(theta_CS.flatten()),
-        tuple(P_CS.flatten()),
+        theta_CS,
+        P_CS,
         its_CS,
         t_CS,
+        t_VI_CS,
         TO_CS,
-        tuple(pi_LP.flatten()),
-        tuple(v_LP),
+        pi_LP,
+        v_LP,
         obj_LP,
-        tuple(theta_LP.flatten()),
-        tuple(P_LP.flatten()),
+        theta_LP,
+        P_LP,
         its_LP,
         t_LP,
+        t_VI_LP,
         TO_LP,
-        tuple(pi_QP.flatten()),
-        tuple(v_QP),
+        pi_QP,
+        v_QP,
         obj_QP,
-        tuple(P_QP.flatten()),
+        P_QP,
         its_QP,
         t_QP,
+        t_VI_QP,
         TO_QP,
-        tuple(pi_proj_sort.flatten()),
-        tuple(v_proj_sort),
+        pi_proj_sort,
+        v_proj_sort,
         obj_proj_sort,
-        tuple(P_proj_sort.flatten()),
+        P_proj_sort,
         its_proj_sort,
         t_proj_sort,
+        t_VI_proj_sort,
         TO_proj_sort
         # tuple(pi_proj_QP.flatten()),
         # tuple(v_proj_QP),
@@ -356,7 +397,7 @@ inputs = inputs + [
     for h in h_vals
     for c in c_vals
     for b in b_vals
-    for C in [10, 15, 20]
+    for C in [7, 9, 14]
     for gap in gap_vals
     for N in N_vals
     if c > q
@@ -393,6 +434,7 @@ names = [
     "P_BS",
     "its_BS",
     "t_BS",
+    "t_VI_BS"
     "TO_BS",
     "pi_CS",
     "v_CS",
@@ -401,6 +443,7 @@ names = [
     "P_CS",
     "its_CS",
     "t_CS",
+    "t_VI_CS",
     "TO_CS",
     "pi_LP",
     "v_LP",
@@ -409,6 +452,7 @@ names = [
     "P_LP",
     "its_LP",
     "t_LP",
+    "t_VI_LP",
     "TO_LP",
     "pi_QP",
     "v_QP",
@@ -416,6 +460,7 @@ names = [
     "P_QP",
     "its_QP",
     "t_QP",
+    "t_VI_QP",
     "TO_QP",
     "pi_proj_sort",
     "v_proj_sort",
@@ -423,6 +468,7 @@ names = [
     "P_proj_sort",
     "its_proj_sort",
     "t_proj_sort",
+    "t_VI_proj_sort",
     "TO_proj_sort"
     # "pi_proj_QP",
     # "v_proj_QP",
@@ -439,7 +485,7 @@ start_file = "start_inf_NV.txt"
 results_file = "results_inf_NV.txt"
 count_file = "count_inf_NV.txt"
 
-continuing = True
+continuing = False
 
 if continuing:
     file1 = open(results_file, "r")

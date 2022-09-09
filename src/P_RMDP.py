@@ -87,7 +87,7 @@ class P_RMDP:
                 ranges[s, a] = np.arange(lb, ub + gap, gap)
 
             theta_base = [
-                list(it.product(*[ranges[s, a] for a in range(self.A)]))
+                it.product(*[ranges[s, a] for a in range(self.A)])
                 for s in range(self.S)
             ]
             now = time.perf_counter()
@@ -96,18 +96,26 @@ class P_RMDP:
             Theta = np.zeros(self.S, dtype="object")
             kappa = chi2.ppf(1 - self.alpha, self.A)
             for s in range(self.S):
-                now = time.perf_counter()
-                if now - start > self.timeout:
-                    return "T.O."
-                Theta_s = compute_conf_set(
-                    np.array(theta_base[s]),
-                    self.A,
-                    self.S - 1,
-                    self.N,
-                    self.MLE[s],
-                    kappa,
-                )
-                Theta_s = [tuple(theta) for theta in Theta_s]
+                Theta_s = []
+                for theta in theta_base[s]:
+                    now = time.perf_counter()
+                    if now - start > self.timeout:
+                        return "T.O."
+                    if max(theta) > 1 or min(theta) < 0:
+                        continue
+                    if (
+                        binom_conf_val(self.A, self.S - 1, self.N, theta, self.MLE[s])
+                        <= kappa
+                    ):
+                        Theta_s.append(tuple(theta))
+                # Theta_s = compute_conf_set(
+                #     np.array(theta_base[s]),
+                #     self.A,
+                #     self.S - 1,
+                #     self.N,
+                #     self.MLE[s],
+                #     kappa,
+                # )
                 if tuple(self.MLE[s]) not in Theta_s:
                     Theta_s.append(tuple(self.MLE[s]))
                 Theta[s] = Theta_s
@@ -134,7 +142,7 @@ class P_RMDP:
 
             return True
 
-    def Bellman_LP(self, v, s, t, AS, tt):
+    def Bellman_LP(self, v, s, t, AS, tt, method="LP"):
         start = time.perf_counter()
         block_print()
         env = gp.Env()
@@ -182,9 +190,14 @@ class P_RMDP:
         m.optimize()
 
         if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
-            return m, dv, dummy, reward
-        else:
-            return ["T.O."]
+            if method == "CS":
+                return m, dv, dummy, reward
+            if method == "LP":
+                res = [m.objVal, np.array(m.getAttr("x", pi).values())]
+                del m
+                return res
+        elif m.Status in [3, 4, 5]:
+            return ["inf_unbd"]
 
     def projection_obj(self, theta, s, b, a):
         return (self.N * (self.S - 1) * (theta - self.MLE[s, a]) ** 2) / (
@@ -328,10 +341,12 @@ class P_RMDP:
             if tt + tt_CS > self.timeout:
                 return ["T.O."]
             if k == 0:
-                sol = self.Bellman_LP(v, s, t, Theta_k, tt)
-                if len(sol) == 1:
+                sol = self.Bellman_LP(v, s, t, Theta_k, tt, method="CS")
+                if sol[0] == "T.O.":
                     return ["T.O."]
-                m, dv, dummy = self.Bellman_LP(v, s, t, Theta_k, tt)[:3]
+                if sol[0] == "inf_unbd":
+                    return ["inf_unbd"]
+                m, dv, dummy = sol[:3]
             else:
                 i = Theta.index(theta_k)
                 reward = np.array(
@@ -399,8 +414,8 @@ class P_RMDP:
 
         if k == k_max and reason == "":
             reason = "k"
-
-        return m, dv
+        del m
+        return obj_k, pi_k
 
     def Bellman_obj(self, v, pi, P):
         return [
@@ -445,33 +460,30 @@ class P_RMDP:
                 AS = [tuple(theta) for theta in self.Theta[s]]
                 if method == "LP":
                     sol = self.Bellman_LP(v, s, t, AS, tt)
-                    if len(sol) == 1:
+                    if sol[0] == "T.O.":
                         tt = time.perf_counter() - start
                         return [v_new, t, tt]  # timeout
-                    m, dv, dummy, reward = sol
-
-                    obj = m.ObjVal
+                    elif sol[0] == "inf_unbd":
+                        return ["inf_unbd"]
+                    obj, pi_star[s] = sol
 
                 elif method == "CS":
                     sol = self.Bellman_CS(v, s, t, tt)
-                    if len(sol) == 1:
+                    if sol[0] == "T.O.":
                         tt = time.perf_counter() - start
-                        return [v_new, t, tt] # timeout
-                    m, dv = sol
-                    obj = m.ObjVal
+                        return [v_new, t, tt]  # timeout
+
+                    elif sol[0] == "inf_unbd":
+                        return ["inf_unbd"]
+                    obj, pi_star[s]= sol
 
                 elif method == "BS":
                     sol = self.Bellman_BS(v, s, t, tt)
-                    if len(sol) == 1:
+                    if sol[0] == "T.O.":
                         tt = time.perf_counter() - start
                         return [v_new, t, tt]  # timeout
                     obj, theta = sol
                     theta_BS[s] = theta
-
-                if method in ["LP", "CS"]:
-                    pi = dv
-                    pi_star[s] = np.array((m.getAttr("x", pi).values()))
-                    del m
 
                 v_new[s] = obj
 
@@ -483,12 +495,10 @@ class P_RMDP:
         if method == "BS":
             for s in range(self.S):
                 sol = self.Bellman_CS(v_new, s, t, tt)
-                if len(sol) == 1:
+                if sol[0] == "T.O.":
                     tt = time.perf_counter() - start
                     return [v_new, t, tt]  # timeout
-                m, pi = sol
-                pi_star[s] = np.array((m.getAttr("x", pi).values()))
-                del m
+                obj, pi_star[s] = sol
 
         for s in range(self.S):
             reward = np.array(
