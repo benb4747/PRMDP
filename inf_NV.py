@@ -365,10 +365,10 @@ cores = 32
 loop_cores = 8
 solver_cores = int(cores / loop_cores)
 
-q_vals = [1, 2.5]
-h_vals = [1, 2.5, 5]
-c_vals = [1, 2.5, 5]
-b_vals = [1, 2.5, 5]
+q_vals = [1, 5]
+h_vals = [1, 5, 10]
+c_vals = [1, 5, 10]
+b_vals = [1, 5, 10]
 
 C_vals = [1, 2, 3]  # inventory capacity, to ensure finite state space
 discount = 0.5
@@ -391,7 +391,7 @@ inputs = [
     for C in C_vals
     for gap in gap_vals
     for N in N_vals
-    if c > q
+    if q > c
 ]
 
 inputs = inputs + [
@@ -403,7 +403,7 @@ inputs = inputs + [
     for C in [7, 9, 14]
     for gap in gap_vals
     for N in N_vals
-    if c > q
+    if q > c
 ]
 
 for i in inputs:
