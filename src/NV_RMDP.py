@@ -72,12 +72,10 @@ class NV_RMDP:
             sold = max(min(s + a, self.C) - s_, 0)
             hold = min(s + a, self.C) - sold
             r[s, a, s_] = (
-                1000
-                + self.q * sold
-                - self.h * hold
-                - self.c * a
-                - self.b * int(s_ == 0)
+                +self.q * sold - self.h * hold - self.c * a - self.b * int(s_ == 0)
             )
+        if np.min(r) < 0:
+            r = r + abs(np.min(r)) + 1
         self.r = r
         return
 

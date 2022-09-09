@@ -475,7 +475,7 @@ class P_RMDP:
 
                     elif sol[0] == "inf_unbd":
                         return ["inf_unbd"]
-                    obj, pi_star[s]= sol
+                    obj, pi_star[s] = sol
 
                 elif method == "BS":
                     sol = self.Bellman_BS(v, s, t, tt)

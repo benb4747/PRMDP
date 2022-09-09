@@ -391,6 +391,7 @@ class NP_RMDP:
         Delta = 10000
         alpha = np.zeros((self.S, self.A))
         worst = np.zeros((self.S, self.A, self.S))
+        codes = ["subopt", "T.O.", "inf_unbd"]
         while (
             Delta >= self.VI_tol * (1 - self.discount) / (2 * self.discount)
         ) and t < self.t_max:
@@ -405,7 +406,7 @@ class NP_RMDP:
                 sol = self.Bellman_update(v, s, t, method, tt)
                 if len(sol) == 1:
                     tt = time.perf_counter() - start
-                    return [v_new, t, tt]
+                    return [v_new, t, tt, codes.index(sol[0])]
                 v_new[s], alpha[s] = sol
             Delta = max(abs(np.array(v_new) - np.array(v)))
             t += 1
@@ -443,9 +444,10 @@ class NP_RMDP:
         start = time.perf_counter()
         block_print()
         env = gp.Env()
-        env.setParam("OutputFlag", 1)
+        env.setParam("OutputFlag", 0)
         env.setParam("LogToConsole", 0)
         env.setParam("Threads", self.solver_cores)
+        # env.setParam("BarQCPConvTol", 1e-10)
         m = gp.Model(env=env)
         enable_print()
         # print("About to start building model for the policy. \n")
@@ -510,7 +512,7 @@ class NP_RMDP:
         m.setObjective(Obj, GRB.MAXIMIZE)
         # m.write("model_%s.lp" % s)
         m.optimize()
-        if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
+        if m.Status == GRB.OPTIMAL and m.solCount > 0:
             pi_star = np.array(m.getAttr("x", pi).values())
             nu_star = np.array(m.getAttr("x", nu).values())
             z_star = np.array(m.getAttr("x", z).values())
@@ -518,19 +520,7 @@ class NP_RMDP:
             eta_star = eta.x
             y = np.zeros((self.A, self.S))
             worst = np.zeros((self.A, self.S))
-            #             print("nu = ", nu_star, "eta = ", eta_star)
-            #             print("z is: ", z_star, "should be : ",
-            #                   [max(nu_star[a] - pi_star[a] * b[a, s_] + 2 * eta_star, 0)
-            #                    for (a, s_) in keys])
-            #             print("b is" , b)
-            #             print("x is: ", x_star)
-            #             print("x should be: ",
-            #                   [max(nu_star[a] - pi_star[a] * b[a, s_] + 2 * eta_star, 0) ** 2  / (eta_star)
-            #                    for (a, s_) in keys])
             for (a, s_) in it.product(range(self.A), range(self.S)):
-                #                 if max(self.P_hat[s, a]) == 1:
-                #                     worst[a] = self.P_hat[s, a]
-                #                 else:
                 y[a, s_] = (nu_star[a] - pi_star[a] * b[a, s_]) / eta_star
                 if self.distance == "KLD":
                     worst[a, s_] = self.P_hat[s, a, s_] * exp(y[a, s_])
@@ -542,28 +532,14 @@ class NP_RMDP:
                     for (a, s_) in it.product(range(self.A), range(self.S))
                 ]
             )
-            #             print("s = ", s, "distance = ", distance_, "kappa = ", self.kappa)
-            #             print("obj = ", m.ObjVal, "v_s = ", v[s], "primal obj = ",
-            #                  sum(
-            #                     [
-            #                         pi_star[a]
-            #                         * sum(
-            #                             [
-            #                                 worst[a, s_]
-            #                                 * (self.rewards[s, a, s_] + self.discount * v[s_])
-            #                                 for s_ in range(self.S)
-            #                             ]
-            #                         )
-            #                         for a in range(self.A)
-            #                     ]
-            #             )
-            #                  )
-            #             print()
-            #             print(worst, self.P_hat[s])
-
             obj = m.ObjVal
             del m
             return pi_star, worst, obj
-        else:
+        elif m.Status == GRB.TIME_LIMIT:
             del m
             return ["T.O."]
+        elif m.Status == GRB.SUBOPTIMAL:
+            return ["subopt"]
+        else:
+            del m
+            return ["inf_unbd"]

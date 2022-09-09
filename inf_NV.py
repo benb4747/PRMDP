@@ -60,6 +60,7 @@ def test_algorithms(inp):
             )
         else:
             P_hat[s, a, s_] = binompmf(C, MLE[s, a], min(s + a, C) - s_)
+        P_hat[s, a, s_] = np.round(P_hat[s, a, s_], 6)
 
     # Parametric experiments
     P_NV = NV_RMDP(
@@ -269,8 +270,8 @@ def test_algorithms(inp):
     s = time.perf_counter()
     res_QP = NV_MDP.value_iteration(method="QP")
     e = time.perf_counter()
-    if len(res_QP) == 3:
-        v_QP, its_QP, t_VI_QP = res_QP
+    if len(res_QP) == 4:
+        v_QP, its_QP, t_VI_QP, reas_QP = res_QP
         pi_QP, obj_QP, P_QP = 3 * [-1]
         TO_QP = True
     else:
@@ -280,6 +281,7 @@ def test_algorithms(inp):
             tuple(v_QP.flatten()),
             tuple(P_QP.flatten()),
         )
+        reas_QP = -1
         TO_QP = False
     t_QP = np.round(e - s, 3)
     # print("solved with QP in %s seconds \n" %t_QP)
@@ -322,6 +324,7 @@ def test_algorithms(inp):
         t_QP,
         t_VI_QP,
         TO_QP,
+        reas_QP,
         pi_proj_sort,
         v_proj_sort,
         obj_proj_sort,
@@ -362,10 +365,10 @@ cores = 32
 loop_cores = 8
 solver_cores = int(cores / loop_cores)
 
-q_vals = [10, 25]
-h_vals = [10, 25, 50]
-c_vals = [10, 25, 50]
-b_vals = [10, 25, 50]
+q_vals = [1, 2.5]
+h_vals = [1, 2.5, 5]
+c_vals = [1, 2.5, 5]
+b_vals = [1, 2.5, 5]
 
 C_vals = [1, 2, 3]  # inventory capacity, to ensure finite state space
 discount = 0.5
@@ -434,7 +437,7 @@ names = [
     "P_BS",
     "its_BS",
     "t_BS",
-    "t_VI_BS"
+    "t_VI_BS",
     "TO_BS",
     "pi_CS",
     "v_CS",
@@ -462,6 +465,7 @@ names = [
     "t_QP",
     "t_VI_QP",
     "TO_QP",
+    "reas_QP",
     "pi_proj_sort",
     "v_proj_sort",
     "obj_proj_sort",
