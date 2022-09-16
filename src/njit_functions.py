@@ -15,8 +15,18 @@ def read_results(file):
     for line in lines[1:]:
         line = line.rstrip("\n")
         if "failed" not in line:
-            lines_new.append(eval(line))
+            line = eval(line)
+            if line[names.index("t_VI_CS")] > 14400:
+                line[names.index("t_CS")] = 14400.00000
+                line[names.index("t_VI_CS")] = 14400.00000
+            if line[names.index("t_VI_LP")] > 14400.00000:
+                line[names.index("t_LP")] = 14400.00000
+                line[names.index("t_VI_LP")] = 14400.00000
+                
+            lines_new.append(line)
     print("Dataset has %s rows." % len(lines_new))
+    
+  
 
     res_array = np.array(lines_new)
     df = pd.DataFrame(data=res_array, columns=names, index=res_array[:, 0])
