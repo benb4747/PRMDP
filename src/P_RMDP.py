@@ -156,24 +156,25 @@ class P_RMDP:
         pi = m.addVars(range(self.A), vtype=GRB.CONTINUOUS, name="pi")
 
         m.addConstr(gp.quicksum(pi) == 1)
-        Theta = [tuple(theta) for theta in self.Theta[s]]
 
-        reward = np.array(
-            [
-                [
+        reward = []
+        for a in range(self.A):
+            reward_ = []
+            for theta in AS:
+                reward_.append(
                     sum(
                         [
-                            self.probs[s, a][Theta.index(theta), s_]
+                            self.probs[s, a][AS.index(theta), s_]
                             * (self.rewards[s, a, s_] + self.discount * v[s_])
                             for s_ in range(self.S)
                         ]
                     )
-                    for theta in AS
-                ]
-                for a in range(self.A)
-            ]
-        )
+                )
+                if tt + time.perf_counter() - start > self.timeout:
+                    return ["T.O."]
+            reward.append(reward_)
 
+        reward = np.array(reward)
         m.addConstrs(
             dummy <= gp.quicksum(pi[a] * reward[a, i] for a in range(self.A))
             for i in range(len(AS))
