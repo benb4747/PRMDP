@@ -125,6 +125,7 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_CS) == 3:
         v_CS, its_CS, t_VI_CS = res_CS
+        v_CS = tuple(v_CS.flatten())
         pi_CS, obj_CS, theta_CS, P_CS = 4 * [-1]
         TO_CS = True
     elif res_CS[0] == "inf_unbd":
@@ -149,6 +150,7 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_BS) == 3:
         v_BS, its_BS, t_VI_BS = res_BS
+        v_BS = tuple(v_BS.flatten())
         pi_BS, obj_BS, theta_BS, P_BS = 4 * [-1]
         TO_BS = True
     else:
@@ -169,6 +171,7 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_LP) == 3:
         v_LP, its_LP, t_VI_LP = res_LP
+        v_LP = tuple(v_LP.flatten())
         pi_LP, obj_LP, theta_LP, P_LP = 4 * [-1]
         TO_LP = True
     elif res_LP[0] == ["inf_unbd"]:
@@ -247,6 +250,7 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_proj_sort) == 3:
         v_proj_sort, its_proj_sort, t_VI_proj_sort = res_proj_sort
+        v_proj_sort = tuple(v_proj_sort.flatten())
         pi_proj_sort, obj_proj_sort, P_proj_sort = 3 * [-1]
         TO_proj_sort = True
     else:
@@ -272,6 +276,7 @@ def test_algorithms(inp):
     e = time.perf_counter()
     if len(res_QP) == 4:
         v_QP, its_QP, t_VI_QP, reas_QP = res_QP
+        v_QP = tuple(v_QP.flatten())
         pi_QP, obj_QP, P_QP = 3 * [-1]
         TO_QP = True
     else:
@@ -365,12 +370,12 @@ cores = 32
 loop_cores = 8
 solver_cores = int(cores / loop_cores)
 
-q_vals = [1, 5]
+q_vals = [1, 5, 10]
 h_vals = [1, 5, 10]
 c_vals = [1, 5, 10]
 b_vals = [1, 5, 10]
 
-C_vals = [1, 2, 3]  # inventory capacity, to ensure finite state space
+C_vals = [1, 2, 3, 7, 9, 14]  # inventory capacity, to ensure finite state space
 discount = 0.5
 
 dist = "binomial"
@@ -388,21 +393,9 @@ inputs = [
     for h in h_vals
     for c in c_vals
     for b in b_vals
+    for gap in gap_vals
+    for N in N_vals
     for C in C_vals
-    for gap in gap_vals
-    for N in N_vals
-    if q > c
-]
-
-inputs = inputs + [
-    (q, h, c, b, C, discount, dist, t_max, eps, alpha, gap, N, timeout, solver_cores)
-    for q in q_vals
-    for h in h_vals
-    for c in c_vals
-    for b in b_vals
-    for C in [7, 9, 14]
-    for gap in gap_vals
-    for N in N_vals
     if q > c
 ]
 
@@ -489,23 +482,21 @@ start_file = "start_inf_NV.txt"
 results_file = "results_inf_NV.txt"
 count_file = "count_inf_NV.txt"
 
-continuing = False
+continuing = True
 
 if continuing:
     file1 = open(results_file, "r")
     lines = file1.readlines()
     file1.close()
 
-    lines_new = []
+    done_ind = []
     failed = []
     # names = eval(lines[0])
     for line in lines[1:]:
         line = line.rstrip("\n")
         if "failed" not in line:
-            lines_new.append(eval(line))
+            done_ind.append(eval(line)[0])
 
-    res_array = np.array(lines_new)
-    df = pd.DataFrame(data=res_array, columns=names)
     file1 = open(count_file, "r")
     lines = file1.readlines()
     file1.close()
@@ -515,9 +506,9 @@ if continuing:
         line = line.rstrip("\n")
         if "timed" in line:
             i = [int(i) for i in line.split() if i.isdigit()][0]
-            timed_out.append((i, 0))
+            timed_out.append(i)
 
-    done = list(df.ind) + failed + timed_out
+    done = done_ind + failed + timed_out
 
     not_done = [i for i in test_full if i[0] not in done]
 
