@@ -32,7 +32,7 @@ class NV_RMDP:
         theta_0,
         theta_hat,
         alpha,
-        gap,
+        M,
         N,
         timeout,
         solver_cores,
@@ -61,7 +61,7 @@ class NV_RMDP:
         self.theta_0 = theta_0
         self.MLE = theta_hat
         self.alpha = alpha
-        self.gap = gap
+        self.M = M
         self.N = N
         self.timeout = timeout
         self.solver_cores = solver_cores
@@ -94,7 +94,7 @@ class NV_RMDP:
                 self.theta_0,
                 self.MLE,
                 self.alpha,
-                self.gap,
+                self.M,
                 self.N,
                 self.kappa,
                 self.P_hat,

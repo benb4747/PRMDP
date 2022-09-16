@@ -22,11 +22,9 @@ def read_results(file):
             if line[names.index("t_VI_LP")] > 14400.00000:
                 line[names.index("t_LP")] = 14400.00000
                 line[names.index("t_VI_LP")] = 14400.00000
-                
+
             lines_new.append(line)
     print("Dataset has %s rows." % len(lines_new))
-    
-  
 
     res_array = np.array(lines_new)
     df = pd.DataFrame(data=res_array, columns=names, index=res_array[:, 0])

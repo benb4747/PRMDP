@@ -27,7 +27,7 @@ def test_algorithms(inp):
         t_max,
         eps,
         alpha,
-        gap,
+        M,
         N,
         timeout,
         solver_cores,
@@ -82,7 +82,7 @@ def test_algorithms(inp):
         p_0,
         MLE,
         alpha,
-        gap,
+        M,
         N,
         timeout,
         solver_cores,
@@ -210,7 +210,7 @@ def test_algorithms(inp):
         p_0,
         MLE,
         alpha,
-        gap,
+        M,
         N,
         timeout,
         solver_cores,
@@ -383,17 +383,17 @@ t_max = 1000
 eps = 1e-6
 
 alpha = 0.05
-gap_vals = [0.20, 0.10, 0.05]
+M_vals = [3, 5, 10]
 N_vals = [10, 50]
 
 timeout = 4 * 60 * 60
 inputs = [
-    (q, h, c, b, C, discount, dist, t_max, eps, alpha, gap, N, timeout, solver_cores)
+    (q, h, c, b, C, discount, dist, t_max, eps, alpha, M, N, timeout, solver_cores)
     for q in q_vals
     for h in h_vals
     for c in c_vals
     for b in b_vals
-    for gap in gap_vals
+    for M in M_vals
     for N in N_vals
     for C in C_vals
     if q > c
@@ -415,7 +415,7 @@ names = [
     "t_max",
     "eps",
     "alpha",
-    "gap",
+    "M",
     "N",
     "timeout",
     "solver_cores",
@@ -482,7 +482,7 @@ start_file = "start_inf_NV.txt"
 results_file = "results_inf_NV.txt"
 count_file = "count_inf_NV.txt"
 
-continuing = True
+continuing = False
 
 if continuing:
     file1 = open(results_file, "r")

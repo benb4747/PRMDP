@@ -30,7 +30,7 @@ class P_RMDP:
         theta_0,
         theta_hat,
         alpha,
-        gap,
+        M,
         N,
         kappa,
         P_hat,
@@ -49,7 +49,7 @@ class P_RMDP:
         self.t_max = t_max
         self.VI_tol = VI_tol
         self.BS_tol = BS_tol
-        self.gap = gap
+        self.M = M
         self.N = N
         self.kappa = kappa
         self.P_hat = P_hat
@@ -64,7 +64,7 @@ class P_RMDP:
         theta_base = []
         if self.dist == "binomial":
             theta_base = []
-            gap = self.gap
+            M = self.M
             ranges = np.zeros((self.S, self.A), dtype="object")
             for (s, a) in it.product(range(self.S), range(self.A)):
                 th = self.MLE[s, a]
@@ -84,7 +84,9 @@ class P_RMDP:
                     ),
                     0,
                 )
-                ranges[s, a] = np.arange(lb, ub + gap, gap)
+                ranges[s, a] = np.array(
+                    [lb + m * (ub - lb) / (M - 1) for m in range(M)]
+                )
 
             theta_base = [
                 it.product(*[ranges[s, a] for a in range(self.A)])
