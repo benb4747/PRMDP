@@ -458,7 +458,7 @@ class NP_RMDP:
             (a, s_)
             for a in range(self.A)
             for s_ in range(self.S)
-            if self.P_hat[s, a, s_] > 0
+            # if self.P_hat[s, a, s_] > 0
         ]
         z = m.addVars(keys, lb=0, name="z")
         x = m.addVars(keys, lb=0, name="x")
