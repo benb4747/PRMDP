@@ -16,13 +16,13 @@ def read_results(file):
         line = line.rstrip("\n")
         if "failed" not in line:
             line = eval(line)
-            if line[names.index("t_VI_CS")] > 14400:
-                line[names.index("t_CS")] = 14400.00000
-                line[names.index("t_VI_CS")] = 14400.00000
-            if line[names.index("t_VI_LP")] > 14400.00000:
-                line[names.index("t_LP")] = 14400.00000
-                line[names.index("t_VI_LP")] = 14400.00000
-
+            for alg in ["CS", "LP", "PBS", "QP", "NBS"]:
+                if line[names.index("t_VI_%s" % alg)] > line[names.index("timeout")]:
+                    line[names.index("t_VI_%s" % alg)] = line[names.index("timeout")]
+                    line[names.index("TO_%s" % alg)] = True
+                if line[names.index("t_%s" % alg)] > line[names.index("timeout")]:
+                    line[names.index("t_%s" % alg)] = line[names.index("timeout")]
+                    line[names.index("TO_%s" % alg)] = True
             lines_new.append(line)
     print("Dataset has %s rows." % len(lines_new))
 
