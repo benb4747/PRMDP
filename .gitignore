@@ -4,3 +4,5 @@ src/__pycache__/*
 *.lp
 *.mps
 *.lp
+*.png
+*.tex
