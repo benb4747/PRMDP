@@ -123,6 +123,51 @@ class P_RMDP:
                 Theta[s] = Theta_s
             self.Theta = Theta
 
+        if self.dist == "poisson":
+            theta_base = []
+            M = self.M
+            ranges = np.zeros((self.S, self.A), dtype="object")
+            for (s, a) in it.product(range(self.S), range(self.A)):
+                th = self.MLE[s, a]
+                ub = th + np.sqrt((th * chi2.ppf(1 - self.alpha, self.A) / self.N))
+                lb = max(
+                    th - np.sqrt((th * chi2.ppf(1 - self.alpha, self.A) / self.N)),
+                    0,
+                )
+                ranges[s, a] = np.array(
+                    [lb + m * (ub - lb) / (M - 1) for m in range(M)]
+                )
+
+            theta_base = [
+                it.product(*[ranges[s, a] for a in range(self.A)])
+                for s in range(self.S)
+            ]
+            now = time.perf_counter()
+            if now - start > self.timeout:
+                return "T.O."
+            Theta = np.zeros(self.S, dtype="object")
+            kappa = chi2.ppf(1 - self.alpha, self.A)
+            for s in range(self.S):
+                Theta_s = []
+                for theta in theta_base[s]:
+                    now = time.perf_counter()
+                    if now - start > self.timeout:
+                        return "T.O."
+                    if poisson_conf_val(self.A, self.N, theta, self.MLE[s]) <= kappa:
+                        Theta_s.append(tuple(theta))
+                # Theta_s = compute_conf_set(
+                #     np.array(theta_base[s]),
+                #     self.A,
+                #     self.S - 1,
+                #     self.N,
+                #     self.MLE[s],
+                #     kappa,
+                # )
+                if tuple(self.MLE[s]) not in Theta_s:
+                    Theta_s.append(tuple(self.MLE[s]))
+                Theta[s] = Theta_s
+            self.Theta = Theta
+
         self.num_params = [len(self.Theta[s]) for s in range(self.S)]
         self.t_conf = np.round(time.perf_counter() - start, 3)
         return True
@@ -138,6 +183,23 @@ class P_RMDP:
                 pr = np.zeros((self.num_params[s], self.S))
                 for i in range(self.num_params[s]):
                     pr[i] = binom_probs_fast(self.S, self.A, s, a, self.Theta[s][i][a])
+                probs[s, a] = pr
+
+            self.probs = probs
+
+            return True
+
+        if self.dist in ["Poisson", "poisson"]:
+            probs = np.zeros((self.S, self.A), dtype="object")
+            for (s, a) in it.product(range(self.S), range(self.A)):
+                now = time.perf_counter()
+                if (now - start) + self.t_conf > self.timeout:
+                    return "T.O."
+                pr = np.zeros((self.num_params[s], self.S))
+                for i in range(self.num_params[s]):
+                    pr[i] = poisson_probs_fast(
+                        self.S, self.A, s, a, self.Theta[s][i][a]
+                    )
                 probs[s, a] = pr
 
             self.probs = probs
@@ -173,6 +235,8 @@ class P_RMDP:
                     )
                 )
                 if tt + time.perf_counter() - start > self.timeout:
+                    del env
+                    del m
                     return ["T.O."]
             reward.append(reward_)
 
@@ -187,6 +251,8 @@ class P_RMDP:
         m.setObjective(dummy, GRB.MAXIMIZE)
         t_build = time.perf_counter() - start
         if tt + t_build > self.timeout:
+            del env
+            del m
             return ["T.O."]
 
         m.Params.TimeLimit = self.timeout - tt - t_build
@@ -194,33 +260,51 @@ class P_RMDP:
 
         if m.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.solCount > 0:
             if method == "CS":
+                del env
                 return m, dv, dummy, reward
             if method == "LP":
                 res = [m.objVal, np.array(m.getAttr("x", pi).values())]
                 del m
+                del env
                 return res
         elif m.Status in [3, 4, 5]:
+            del env
+            del m
             return ["inf_unbd"]
 
     def projection_obj(self, theta, s, b, a):
-        return (self.N * (self.S - 1) * (theta - self.MLE[s, a]) ** 2) / (
-            self.MLE[s, a] * (1 - self.MLE[s, a])
-        )
+        if self.dist == "binomial":
+            return (self.N * (self.S - 1) * (theta - self.MLE[s, a]) ** 2) / (
+                self.MLE[s, a] * (1 - self.MLE[s, a])
+            )
+        elif self.dist == "poisson":
+            return (self.N * (theta - self.MLE[s, a]) ** 2) / self.MLE[s, a]
 
     def projection_deriv(self, theta, s, a):
-        return (2 * self.N * (self.S - 1) * (theta - self.MLE[s, a])) / (
-            self.MLE[s, a] * (1 - self.MLE[s, a])
-        )
+        if self.dist == "binomial":
+            return (2 * self.N * (self.S - 1) * (theta - self.MLE[s, a])) / (
+                self.MLE[s, a] * (1 - self.MLE[s, a])
+            )
+        elif self.dist == "poisson":
+            return (2 * self.N * (theta - self.MLE[s, a])) / (self.MLE[s, a])
 
     def solve_projection(self, s, b, a, beta, delta, tt, root_gap=0.01):
         start = time.perf_counter()
         left = self.timeout - tt
         if sum(self.P_hat[s, a] * b) <= beta:
             return [self.MLE[s, a], 0]
+        if min(b) > beta:
+            return False
         # find root intervals
         if self.dist == "binomial":
             theta_min = 0
             theta_max = 1
+        elif self.dist == "poisson":
+            theta_min = 0
+            theta_max = self.MLE[s, a] + np.sqrt(
+                (self.MLE[s, a] * chi2.ppf(1 - self.alpha, self.A) / self.N)
+            )
+            root_gap = 1
         intervals = []
         for run in range(2):
             theta = self.MLE[s, a]
@@ -233,7 +317,16 @@ class P_RMDP:
                     theta = max(theta - root_gap, theta_min)
                 else:
                     theta = min(theta + root_gap, theta_max)
-                EV = sum(np.array(binom_probs_fast(self.S, self.A, s, a, theta)) * b)
+                if self.dist == "binomial":
+                    EV = EV_jit(
+                        np.array(binom_probs_fast(self.S, self.A, s, a, theta)), b
+                    )
+                elif self.dist == "poisson":
+                    EV = EV_jit(
+                        np.array(poisson_probs_fast(self.S, self.A, s, a, theta)), b
+                    )
+                # print(EV, beta, np.array(poisson_probs_fast(self.S, self.A, s, a, theta)))
+
                 if theta == theta_min or theta == theta_max:
                     break
             if EV < beta:
@@ -252,29 +345,33 @@ class P_RMDP:
                     return ["T.O."]
                 x = (l + u) / 2
                 objs = [self.projection_obj(sol, s, b, a) for sol in [l, u]]
-                if self.dist == "binomial":
-                    P = np.array(binom_probs_fast(self.S, self.A, s, a, x))
                 if max(objs) - min(objs) <= delta:
                     condition = False
                     continue
+                if self.dist == "binomial":
+                    P = np.array(binom_probs_fast(self.S, self.A, s, a, x))
+                elif self.dist == "poisson":
+                    P = np.array(poisson_probs_fast(self.S, self.A, s, a, x))
                 if r == 0:
-                    if sum(P * b) <= beta:
+                    if EV_jit(P, b) <= beta:
                         l = x
                     else:
                         u = x
                 else:
-                    if sum(P * b) <= beta:
+                    if EV_jit(P, b) <= beta:
                         u = x
                     else:
                         l = x
             roots.append((l, u))
-
         objs = [self.projection_obj((u + l) / 2, s, b, a) for (l, u) in roots]
         l, u = roots[np.argmin(objs)]
         opt = (l + u) / 2
-
-        EV_l = sum(np.array(binom_probs_fast(self.S, self.A, s, a, l)) * b)
-        EV_u = sum(np.array(binom_probs_fast(self.S, self.A, s, a, u)) * b)
+        if self.dist == "binomial":
+            EV_l = EV_jit(np.array(binom_probs_fast(self.S, self.A, s, a, l)), b)
+            EV_u = EV_jit(np.array(binom_probs_fast(self.S, self.A, s, a, u)), b)
+        elif self.dist == "poisson":
+            EV_l = EV_jit(np.array(poisson_probs_fast(self.S, self.A, s, a, l)), b)
+            EV_u = EV_jit(np.array(poisson_probs_fast(self.S, self.A, s, a, u)), b)
         if EV_l <= beta:
             objs_opt = [self.projection_obj(sol, s, b, a) for sol in [l, (u + l) / 2]]
         elif EV_u <= beta:
@@ -301,6 +398,7 @@ class P_RMDP:
         u = R_bar
         conf = np.zeros((self.A, 2))
         condition = True
+        i = 0
         while condition:
             if time.perf_counter() - start + tt > self.timeout:
                 return ["T.O."]
@@ -329,7 +427,7 @@ class P_RMDP:
                 self.kappa < sum(conf[:, 1]) and self.kappa >= sum(conf[:, 0])
             ):
                 condition = False
-
+            i += 1
         return x, theta_BS
 
     def Bellman_CS(self, v, s, t, tt, CS_tol=1e-6, k_max=100):
@@ -342,12 +440,24 @@ class P_RMDP:
         while k < k_max:
             tt_CS = time.perf_counter() - start
             if tt + tt_CS > self.timeout:
+                try:
+                    del m
+                except NameError:
+                    pass
                 return ["T.O."]
             if k == 0:
                 sol = self.Bellman_LP(v, s, t, Theta_k, tt, method="CS")
                 if sol[0] == "T.O.":
+                    try:
+                        del m
+                    except NameError:
+                        pass
                     return ["T.O."]
                 if sol[0] == "inf_unbd":
+                    try:
+                        del m
+                    except NameError:
+                        pass
                     return ["inf_unbd"]
                 m, dv, dummy = sol[:3]
             else:
@@ -480,7 +590,7 @@ class P_RMDP:
                         return ["inf_unbd"]
                     obj, pi_star[s] = sol
 
-                elif method == "BS":
+                elif method == "PBS":
                     sol = self.Bellman_BS(v, s, t, tt)
                     if sol[0] == "T.O.":
                         tt = time.perf_counter() - start
@@ -495,7 +605,7 @@ class P_RMDP:
             #     "Stopping: ", self.VI_tol * (1 - self.discount) / (2 * self.discount))
             t += 1
         t_VI = time.perf_counter() - start
-        if method == "BS":
+        if method == "PBS":
             for s in range(self.S):
                 sol = self.Bellman_CS(v_new, s, t, tt)
                 if sol[0] == "T.O.":
@@ -510,7 +620,7 @@ class P_RMDP:
                         sum(
                             [
                                 self.probs[s, a][i, s_]
-                                * (self.rewards[s, a, s_] + self.discount * v[s_])
+                                * (self.rewards[s, a, s_] + self.discount * v_new[s_])
                                 for s_ in range(self.S)
                             ]
                         )

@@ -4,6 +4,8 @@ import sys, os
 import numpy as np
 import pandas as pd
 
+from scipy.stats import poisson
+
 
 def read_results(file):
     file1 = open(file, "r")
@@ -105,13 +107,16 @@ def binom_probs_fast(S, A, s, a, theta):
     return probs
 
 
+file1 = open("factorial.txt", "r")
+fac = tuple(eval(file1.readlines()[0]))
+file1.close()
+
+
 @njit
-def poisson_pmf(x, lam):
-    fac = 1
-    if x > 1:
-        for i in range(2, x + 1):
-            fac *= i
-    return (exp(-lam) * lam**x) / fac
+def poisson_pmf(x, lam, fac=fac):
+    if x < 0:
+        return 0
+    return (exp(-lam) * lam**x) / fac[x]
 
 
 @njit
@@ -127,3 +132,19 @@ def poisson_probs_fast(S, A, s, a, lam):
             pr = poisson_pmf(min(s + a, C) - s_, lam)
         probs.append(pr)
     return probs
+
+
+@njit
+def poisson_conf_val(A, N, theta, MLE):
+    val = 0
+    for a in range(A):
+        val += N * ((theta[a] - MLE[a]) ** 2) / (MLE[a])
+    return val
+
+
+@njit
+def EV_jit(P, b):
+    EV = 0
+    for i in range(len(P)):
+        EV += P[i] * b[i]
+    return EV

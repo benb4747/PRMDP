@@ -231,15 +231,17 @@ class NP_RMDP:
                     zeta_star = zeta.x
 
                     del m
-
+                    del env
                     return [
                         self.projection_obj_true(alpha_star, s, b, a, beta, zeta_star),
                         self.projection_obj_true(alpha_star, s, b, a, beta, zeta_star),
                     ]
                 else:
+                    del m
+                    del env
                     return ["T.O."]
 
-            elif method == "proj_sort":
+            elif method == "NBS":
                 states_nz = [s_ for s_ in range(self.S) if self.P_hat[s, a, s_] > 0]
                 states_nz = list(
                     reversed(sorted(range(len(states_nz)), key=lambda k: b[k]))
@@ -313,7 +315,7 @@ class NP_RMDP:
     def Bellman_update(self, v, s, t, method, tt):
         # print("---- Bellman update step t = %s for s = %s----\n" %(t,s))
         start = time.perf_counter()
-        if "proj" in method:
+        if method in ["NBS", "proj_qp"]:
             R_bar = np.max(self.rewards) / (1 - self.discount)
             delta = (
                 self.BS_tol * self.kappa / (2 * self.A * R_bar + self.A * self.BS_tol)
@@ -506,6 +508,8 @@ class NP_RMDP:
         )
 
         if tt + time.perf_counter() - start > self.timeout:
+            del m
+            del env
             return ["T.O."]
 
         m.Params.TimeLimit = self.timeout - (tt + time.perf_counter() - start)
@@ -534,12 +538,17 @@ class NP_RMDP:
             )
             obj = m.ObjVal
             del m
+            del env
             return pi_star, worst, obj
         elif m.Status == GRB.TIME_LIMIT:
             del m
+            del env
             return ["T.O."]
         elif m.Status == GRB.SUBOPTIMAL:
+            del m
+            del env
             return ["subopt"]
         else:
             del m
+            del env
             return ["inf_unbd"]
