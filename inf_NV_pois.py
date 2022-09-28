@@ -468,11 +468,11 @@ names = [
 
 test_full = inputs
 h_ind = int(sys.argv[1]) - 1
-start_file = "pois_start_inf_NV.txt"
-results_file = "pois_results_inf_NV.txt"
-count_file = "pois_count_inf_NV.txt"
+start_file = "start_inf_NV_pois.txt"
+results_file = "results_inf_NV_pois.txt"
+count_file = "count_inf_NV_pois.txt"
 
-continuing = True
+continuing = False
 
 if continuing:
     file1 = open(results_file, "r")

@@ -288,7 +288,7 @@ class P_RMDP:
         elif self.dist == "poisson":
             return (2 * self.N * (theta - self.MLE[s, a])) / (self.MLE[s, a])
 
-    def solve_projection(self, s, b, a, beta, delta, tt, root_gap=0.01):
+    def solve_projection(self, s, b, a, beta, delta, tt):
         start = time.perf_counter()
         left = self.timeout - tt
         if sum(self.P_hat[s, a] * b) <= beta:
@@ -304,7 +304,7 @@ class P_RMDP:
             theta_max = self.MLE[s, a] + np.sqrt(
                 (self.MLE[s, a] * chi2.ppf(1 - self.alpha, self.A) / self.N)
             )
-            root_gap = 1
+        root_gap = (theta_max - theta_min) / 100
         intervals = []
         for run in range(2):
             theta = self.MLE[s, a]
