@@ -46,6 +46,8 @@ def test_algorithms(inp):
         np.random.seed(ind * S * A + _)
         sample = poisson.rvs(lam_0[s, a], size=N)
         MLE[s, a] = sum(sample) / N
+        if MLE[s, a] == 0.0:
+            MLE[s, a] = 0.001
         _ += 1
 
     P_hat = np.zeros((S, A, S), dtype="object")
@@ -123,10 +125,11 @@ def test_algorithms(inp):
         v_CS, its_CS, t_VI_CS = res_CS
         v_CS = tuple(v_CS.flatten())
         pi_CS, obj_CS, theta_CS, P_CS = 4 * [-1]
-    elif "inf" in res_CS[0]:
-        with open(count_file, "a") as myfile:
-            myfile.write("Input %s had an unbounded/inf model.\n" % ind)
-            return
+    elif len(res_CS) == 1 and type(res_CS[0]) == "str":
+        if res_CS[0] == "inf_unbd":
+            with open(count_file, "a") as myfile:
+                myfile.write("Input %s CS had an unbounded/inf model.\n" % ind)
+                return
     else:
         pi_CS, v_CS, obj_CS, theta_CS, P_CS, its_CS, t_VI_CS = res_CS
         pi_CS, v_CS, P_CS, theta_CS = [
@@ -167,10 +170,11 @@ def test_algorithms(inp):
         v_LP, its_LP, t_VI_LP = res_LP
         v_LP = tuple(v_LP.flatten())
         pi_LP, obj_LP, theta_LP, P_LP = 4 * [-1]
-    elif "inf" in res_LP[0]:
-        with open(count_file, "a") as myfile:
-            myfile.write("Input %s had an unbounded/inf model.\n" % ind)
-            return
+    elif len(res_LP) == 1 and type(res_LP[0]) == "str":
+        if res_LP[0] == "inf_unbd":
+            with open(count_file, "a") as myfile:
+                myfile.write("Input %s LP had an unbounded/inf model.\n" % ind)
+                return
     else:
         pi_LP, v_LP, obj_LP, theta_LP, P_LP, its_LP, t_VI_LP = res_LP
         pi_LP, v_LP, P_LP, theta_LP = [
@@ -472,7 +476,7 @@ start_file = "start_inf_NV_pois.txt"
 results_file = "results_inf_NV_pois.txt"
 count_file = "count_inf_NV_pois.txt"
 
-continuing = False
+continuing = True
 
 if continuing:
     file1 = open(results_file, "r")
