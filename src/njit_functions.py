@@ -148,3 +148,23 @@ def EV_jit(P, b):
     for i in range(len(P)):
         EV += P[i] * b[i]
     return EV
+
+
+def poisson_pmf_slow(x, lam, fac=fac):
+    if x < 0:
+        return 0
+    return (exp(-lam) * lam**x) / fac[x]
+
+
+def poisson_probs(S, A, s, a, lam):
+    probs = []
+    C = S - 1
+    for s_ in range(S):
+        if s_ == 0:
+            pr = 1
+            for d in range(min(s + a, C)):
+                pr -= poisson_pmf_slow(d, lam)
+        else:
+            pr = poisson_pmf_slow(min(s + a, C) - s_, lam)
+        probs.append(pr)
+    return probs
