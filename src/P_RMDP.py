@@ -288,14 +288,14 @@ class P_RMDP:
         elif self.dist == "poisson":
             return (2 * self.N * (theta - self.MLE[s, a])) / (self.MLE[s, a])
 
-    def solve_projection(self, s, b, a, beta, delta, tt):
+    def solve_projection(self, s, b, a, beta, delta, tt, root_gap=0.01):
         start = time.perf_counter()
         left = self.timeout - tt
         if sum(self.P_hat[s, a] * b) <= beta:
-            return [self.MLE[s, a], 0]
-        if min(b) > beta:
-            return False
+            return [self.MLE[s, a], [0, 0]]
         # find root intervals
+        if min(b) > beta:
+            return [False, False]
         if self.dist == "binomial":
             theta_min = 0
             theta_max = 1
@@ -304,7 +304,7 @@ class P_RMDP:
             theta_max = self.MLE[s, a] + np.sqrt(
                 (self.MLE[s, a] * chi2.ppf(1 - self.alpha, self.A) / self.N)
             )
-        root_gap = (theta_max - theta_min) / 100
+        root_gap = max((theta_max - theta_min) / 100, 0.01)
         intervals = []
         for run in range(2):
             theta = self.MLE[s, a]
@@ -334,6 +334,10 @@ class P_RMDP:
                     intervals.append((run, theta, theta + root_gap))
                 else:
                     intervals.append((run, theta - root_gap, theta))
+            if run == 0 and len(intervals) == 1:
+                inter = intervals[0]
+                l, u = inter[1], inter[2]
+                theta_max = min(self.MLE[s, a] + (self.MLE[s, a] - l), theta_max)
         if intervals == []:
             return [False, False]
         roots = []
@@ -366,15 +370,10 @@ class P_RMDP:
         objs = [self.projection_obj((u + l) / 2, s, b, a) for (l, u) in roots]
         l, u = roots[np.argmin(objs)]
         opt = (l + u) / 2
-        if self.dist == "binomial":
-            EV_l = EV_jit(np.array(binom_probs_fast(self.S, self.A, s, a, l)), b)
-            EV_u = EV_jit(np.array(binom_probs_fast(self.S, self.A, s, a, u)), b)
-        elif self.dist == "poisson":
-            EV_l = EV_jit(np.array(poisson_probs_fast(self.S, self.A, s, a, l)), b)
-            EV_u = EV_jit(np.array(poisson_probs_fast(self.S, self.A, s, a, u)), b)
-        if EV_l <= beta:
+
+        if l <= self.MLE[s, a]:
             objs_opt = [self.projection_obj(sol, s, b, a) for sol in [l, (u + l) / 2]]
-        elif EV_u <= beta:
+        else:
             objs_opt = [self.projection_obj(sol, s, b, a) for sol in [u, (u + l) / 2]]
 
         return opt, np.array([min(objs_opt), max(objs_opt)])
@@ -396,16 +395,18 @@ class P_RMDP:
             ]
         )
         u = R_bar
-        conf = np.zeros((self.A, 2))
         condition = True
         i = 0
         while condition:
+            conf = np.zeros((self.A, 2))
             if time.perf_counter() - start + tt > self.timeout:
                 return ["T.O."]
             # print("l = ", l, ", u = ", u, "\n")
             x = (l + u) / 2
             theta_BS = np.zeros(self.A)
             for a in range(self.A):
+                if sum(conf[:, 0]) > self.kappa:
+                    break
                 b = np.array(self.rewards[s, a]) + self.discount * np.array(v)
                 # print("b = ", b, "theta = ", theta)
                 sol = self.solve_projection(s, b, a, x, delta, tt)
